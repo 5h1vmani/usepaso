@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://usepaso.dev/schema/v1.0",
+  "title": "UsePaso Declaration",
+  "description": "Schema for usepaso.yaml — declares what AI agents can do with your API",
+  "type": "object",
+  "required": ["version", "service", "capabilities"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Spec version. Must be \"1.0\""
+    },
+    "service": {
+      "type": "object",
+      "required": ["name", "description", "base_url"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable service name"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the service does (used by agents for discovery)"
+        },
+        "base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL of the API"
+        },
+        "version": {
+          "type": "string",
+          "description": "API version"
+        },
+        "auth": {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["api_key", "bearer", "oauth2", "none"]
+            },
+            "header": {
+              "type": "string",
+              "description": "Header name for api_key/bearer"
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Token prefix (e.g., Bearer, Token)"
+            }
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "method", "path", "permission"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Machine-readable identifier (snake_case)"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What this action does (agents read this)"
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/",
+            "description": "API path, may include {parameters}"
+          },
+          "permission": {
+            "type": "string",
+            "enum": ["read", "write", "admin"]
+          },
+          "consent_required": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, agent must confirm with user before executing"
+          },
+          "inputs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["type", "description"],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["string", "integer", "number", "boolean", "enum", "array", "object"]
+                },
+                "required": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "values": {
+                  "type": "array",
+                  "description": "Allowed values (required for enum type)"
+                },
+                "default": {
+                  "description": "Default value"
+                },
+                "in": {
+                  "type": "string",
+                  "enum": ["query", "path", "body", "header"]
+                }
+              }
+            }
+          },
+          "output": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["type"],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["string", "integer", "number", "boolean", "object", "array"]
+                },
+                "description": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "max_per_hour": { "type": "integer" },
+                "max_per_request": { "type": "integer" },
+                "max_value": { "type": "number" },
+                "allowed_values": { "type": "array" },
+                "requires_field": { "type": "string" },
+                "description": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "write": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "admin": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "forbidden": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

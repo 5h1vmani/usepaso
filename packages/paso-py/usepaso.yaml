@@ -1,0 +1,626 @@
+version: '1.0'
+service:
+  name: Swagger Petstore - OpenAPI 3.0
+  description: 'This is a sample Pet Store Server based on the OpenAPI 3.0 specification.  You can find out more about
+
+    Swagger at [https://swagger.io](https://swagger.io). In the third iteration of the pet store, we''ve switched to the design first approach!
+
+    You can now help us improve the API whether it''s by making changes to the definition itself or to the code.
+
+    That way, with time, we can improve the API in general, and expose some of the new features in OAS3.
+
+
+    Some useful links:
+
+    - [The Pet Store repository](https://github.com/swagger-api/swagger-petstore)
+
+    - [The source API definition for the Pet Store](https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml)'
+  base_url: https://api.example.com/api/v3
+  auth:
+    type: oauth2
+capabilities:
+- name: add_pet
+  description: Add a new pet to the store.
+  method: POST
+  path: /pet
+  permission: write
+  inputs:
+    id:
+      type: integer
+      required: false
+      description: id
+      in: body
+    name:
+      type: string
+      required: true
+      description: name
+      in: body
+    category:
+      type: object
+      required: false
+      description: category
+      in: body
+    photoUrls:
+      type: array
+      required: true
+      description: photoUrls
+      in: body
+    tags:
+      type: array
+      required: false
+      description: tags
+      in: body
+    status:
+      type: enum
+      required: false
+      description: pet status in the store
+      in: body
+      values:
+      - available
+      - pending
+      - sold
+  output:
+    id:
+      type: integer
+      description: id
+    name:
+      type: string
+      description: name
+    category:
+      type: object
+      description: category
+    photoUrls:
+      type: array
+      description: photoUrls
+    tags:
+      type: array
+      description: tags
+    status:
+      type: string
+      description: pet status in the store
+- name: update_pet
+  description: Update an existing pet.
+  method: PUT
+  path: /pet
+  permission: write
+  consent_required: true
+  inputs:
+    id:
+      type: integer
+      required: false
+      description: id
+      in: body
+    name:
+      type: string
+      required: true
+      description: name
+      in: body
+    category:
+      type: object
+      required: false
+      description: category
+      in: body
+    photoUrls:
+      type: array
+      required: true
+      description: photoUrls
+      in: body
+    tags:
+      type: array
+      required: false
+      description: tags
+      in: body
+    status:
+      type: enum
+      required: false
+      description: pet status in the store
+      in: body
+      values:
+      - available
+      - pending
+      - sold
+  output:
+    id:
+      type: integer
+      description: id
+    name:
+      type: string
+      description: name
+    category:
+      type: object
+      description: category
+    photoUrls:
+      type: array
+      description: photoUrls
+    tags:
+      type: array
+      description: tags
+    status:
+      type: string
+      description: pet status in the store
+- name: find_pets_by_status
+  description: Finds Pets by status.
+  method: GET
+  path: /pet/findByStatus
+  permission: read
+  inputs:
+    status:
+      type: enum
+      required: true
+      description: Status values that need to be considered for filter
+      in: query
+      values:
+      - available
+      - pending
+      - sold
+      default: available
+- name: find_pets_by_tags
+  description: Finds Pets by tags.
+  method: GET
+  path: /pet/findByTags
+  permission: read
+  inputs:
+    tags:
+      type: array
+      required: true
+      description: Tags to filter by
+      in: query
+- name: get_pet_by_id
+  description: Find pet by ID.
+  method: GET
+  path: /pet/{petId}
+  permission: read
+  inputs:
+    petId:
+      type: integer
+      required: true
+      description: ID of pet to return
+      in: path
+  output:
+    id:
+      type: integer
+      description: id
+    name:
+      type: string
+      description: name
+    category:
+      type: object
+      description: category
+    photoUrls:
+      type: array
+      description: photoUrls
+    tags:
+      type: array
+      description: tags
+    status:
+      type: string
+      description: pet status in the store
+- name: update_pet_with_form
+  description: Updates a pet in the store with form data.
+  method: POST
+  path: /pet/{petId}
+  permission: write
+  inputs:
+    petId:
+      type: integer
+      required: true
+      description: ID of pet that needs to be updated
+      in: path
+    name:
+      type: string
+      required: false
+      description: Name of pet that needs to be updated
+      in: query
+    status:
+      type: string
+      required: false
+      description: Status of pet that needs to be updated
+      in: query
+  output:
+    id:
+      type: integer
+      description: id
+    name:
+      type: string
+      description: name
+    category:
+      type: object
+      description: category
+    photoUrls:
+      type: array
+      description: photoUrls
+    tags:
+      type: array
+      description: tags
+    status:
+      type: string
+      description: pet status in the store
+- name: delete_pet
+  description: Deletes a pet.
+  method: DELETE
+  path: /pet/{petId}
+  permission: admin
+  consent_required: true
+  inputs:
+    api_key:
+      type: string
+      required: false
+      description: api_key
+      in: header
+    petId:
+      type: integer
+      required: true
+      description: Pet id to delete
+      in: path
+- name: upload_file
+  description: Uploads an image.
+  method: POST
+  path: /pet/{petId}/uploadImage
+  permission: write
+  inputs:
+    petId:
+      type: integer
+      required: true
+      description: ID of pet to update
+      in: path
+    additionalMetadata:
+      type: string
+      required: false
+      description: Additional Metadata
+      in: query
+  output:
+    code:
+      type: integer
+      description: code
+    type:
+      type: string
+      description: type
+    message:
+      type: string
+      description: message
+- name: get_inventory
+  description: Returns pet inventories by status.
+  method: GET
+  path: /store/inventory
+  permission: read
+- name: place_order
+  description: Place an order for a pet.
+  method: POST
+  path: /store/order
+  permission: write
+  inputs:
+    id:
+      type: integer
+      required: false
+      description: id
+      in: body
+    petId:
+      type: integer
+      required: false
+      description: petId
+      in: body
+    quantity:
+      type: integer
+      required: false
+      description: quantity
+      in: body
+    shipDate:
+      type: string
+      required: false
+      description: shipDate
+      in: body
+    status:
+      type: enum
+      required: false
+      description: Order Status
+      in: body
+      values:
+      - placed
+      - approved
+      - delivered
+    complete:
+      type: boolean
+      required: false
+      description: complete
+      in: body
+  output:
+    id:
+      type: integer
+      description: id
+    petId:
+      type: integer
+      description: petId
+    quantity:
+      type: integer
+      description: quantity
+    shipDate:
+      type: string
+      description: shipDate
+    status:
+      type: string
+      description: Order Status
+    complete:
+      type: boolean
+      description: complete
+- name: get_order_by_id
+  description: Find purchase order by ID.
+  method: GET
+  path: /store/order/{orderId}
+  permission: read
+  inputs:
+    orderId:
+      type: integer
+      required: true
+      description: ID of order that needs to be fetched
+      in: path
+  output:
+    id:
+      type: integer
+      description: id
+    petId:
+      type: integer
+      description: petId
+    quantity:
+      type: integer
+      description: quantity
+    shipDate:
+      type: string
+      description: shipDate
+    status:
+      type: string
+      description: Order Status
+    complete:
+      type: boolean
+      description: complete
+- name: delete_order
+  description: Delete purchase order by identifier.
+  method: DELETE
+  path: /store/order/{orderId}
+  permission: admin
+  consent_required: true
+  inputs:
+    orderId:
+      type: integer
+      required: true
+      description: ID of the order that needs to be deleted
+      in: path
+- name: create_user
+  description: Create user.
+  method: POST
+  path: /user
+  permission: write
+  inputs:
+    id:
+      type: integer
+      required: false
+      description: id
+      in: body
+    username:
+      type: string
+      required: false
+      description: username
+      in: body
+    firstName:
+      type: string
+      required: false
+      description: firstName
+      in: body
+    lastName:
+      type: string
+      required: false
+      description: lastName
+      in: body
+    email:
+      type: string
+      required: false
+      description: email
+      in: body
+    password:
+      type: string
+      required: false
+      description: password
+      in: body
+    phone:
+      type: string
+      required: false
+      description: phone
+      in: body
+    userStatus:
+      type: integer
+      required: false
+      description: User Status
+      in: body
+  output:
+    id:
+      type: integer
+      description: id
+    username:
+      type: string
+      description: username
+    firstName:
+      type: string
+      description: firstName
+    lastName:
+      type: string
+      description: lastName
+    email:
+      type: string
+      description: email
+    password:
+      type: string
+      description: password
+    phone:
+      type: string
+      description: phone
+    userStatus:
+      type: integer
+      description: User Status
+- name: create_users_with_list_input
+  description: Creates list of users with given input array.
+  method: POST
+  path: /user/createWithList
+  permission: write
+  output:
+    id:
+      type: integer
+      description: id
+    username:
+      type: string
+      description: username
+    firstName:
+      type: string
+      description: firstName
+    lastName:
+      type: string
+      description: lastName
+    email:
+      type: string
+      description: email
+    password:
+      type: string
+      description: password
+    phone:
+      type: string
+      description: phone
+    userStatus:
+      type: integer
+      description: User Status
+- name: login_user
+  description: Logs user into the system.
+  method: GET
+  path: /user/login
+  permission: read
+  inputs:
+    username:
+      type: string
+      required: false
+      description: The user name for login
+      in: query
+    password:
+      type: string
+      required: false
+      description: The password for login in clear text
+      in: query
+- name: logout_user
+  description: Logs out current logged in user session.
+  method: GET
+  path: /user/logout
+  permission: read
+- name: get_user_by_name
+  description: Get user by user name.
+  method: GET
+  path: /user/{username}
+  permission: read
+  inputs:
+    username:
+      type: string
+      required: true
+      description: The name that needs to be fetched. Use user1 for testing
+      in: path
+  output:
+    id:
+      type: integer
+      description: id
+    username:
+      type: string
+      description: username
+    firstName:
+      type: string
+      description: firstName
+    lastName:
+      type: string
+      description: lastName
+    email:
+      type: string
+      description: email
+    password:
+      type: string
+      description: password
+    phone:
+      type: string
+      description: phone
+    userStatus:
+      type: integer
+      description: User Status
+- name: update_user
+  description: Update user resource.
+  method: PUT
+  path: /user/{username}
+  permission: write
+  consent_required: true
+  inputs:
+    username:
+      type: string
+      required: true
+      description: name that need to be deleted
+      in: path
+    id:
+      type: integer
+      required: false
+      description: id
+      in: body
+    firstName:
+      type: string
+      required: false
+      description: firstName
+      in: body
+    lastName:
+      type: string
+      required: false
+      description: lastName
+      in: body
+    email:
+      type: string
+      required: false
+      description: email
+      in: body
+    password:
+      type: string
+      required: false
+      description: password
+      in: body
+    phone:
+      type: string
+      required: false
+      description: phone
+      in: body
+    userStatus:
+      type: integer
+      required: false
+      description: User Status
+      in: body
+- name: delete_user
+  description: Delete user resource.
+  method: DELETE
+  path: /user/{username}
+  permission: admin
+  consent_required: true
+  inputs:
+    username:
+      type: string
+      required: true
+      description: The name that needs to be deleted
+      in: path
+permissions:
+  read:
+  - find_pets_by_status
+  - find_pets_by_tags
+  - get_pet_by_id
+  - get_inventory
+  - get_order_by_id
+  - login_user
+  - logout_user
+  - get_user_by_name
+  write:
+  - add_pet
+  - update_pet
+  - update_pet_with_form
+  - upload_file
+  - place_order
+  - create_user
+  - create_users_with_list_input
+  - update_user
+  admin:
+  - delete_pet
+  - delete_order
+  - delete_user

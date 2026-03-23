@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://usepaso.dev/schema/v1.0
+version: "1.0"
+
+service:
+  name: __SERVICE_NAME__
+  description: TODO — describe what your service does
+  base_url: https://api.example.com
+  auth:
+    type: bearer
+
+capabilities:
+  - name: example_action
+    description: TODO — describe what this action does
+    method: GET
+    path: /example
+    permission: read
+    inputs:
+      id:
+        type: string
+        required: true
+        description: TODO — describe this parameter
+        in: query
+    output:
+      result:
+        type: string
+        description: TODO — describe the output
+
+permissions:
+  read:
+    - example_action

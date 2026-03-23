@@ -1,8 +1,8 @@
-# Paso Capability Declaration Spec v1.0
+# UsePaso Capability Declaration Spec v1.0
 
 ## Overview
 
-A Paso declaration is a YAML file (`usepaso.yaml`) that describes what AI agents can do with a service's API. The SDK reads this file and generates protocol-specific outputs (MCP servers, A2A endpoints, etc.).
+A UsePaso declaration is a YAML file (`usepaso.yaml`) that describes what AI agents can do with a service's API. The SDK reads this file and generates protocol-specific outputs (MCP servers, A2A endpoints, etc.).
 
 ## File Format
 

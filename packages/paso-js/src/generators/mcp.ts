@@ -2,12 +2,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { PasoDeclaration, PasoCapability, PasoInput } from '../types';
+import { buildRequest, executeRequest, ExecutionResult, formatError } from '../executor';
+
+export type LogCallback = (capName: string, result: ExecutionResult, decl: PasoDeclaration) => void;
 
 /**
  * Generate and return an McpServer from a Paso declaration.
  * Each capability becomes an MCP tool.
  */
-export function generateMcpServer(decl: PasoDeclaration): McpServer {
+export function generateMcpServer(decl: PasoDeclaration, onLog?: LogCallback): McpServer {
   const server = new McpServer({
     name: decl.service.name,
     version: decl.service.version || '1.0.0',
@@ -21,14 +24,27 @@ export function generateMcpServer(decl: PasoDeclaration): McpServer {
     const inputSchema = buildZodSchema(cap);
     const description = buildToolDescription(cap, decl);
 
+    const handler = async (args: Record<string, unknown>) => {
+      const req = buildRequest(cap, args, decl);
+      const result = await executeRequest(req);
+
+      if (onLog) onLog(cap.name, result, decl);
+
+      if (result.error || (result.status && result.status >= 400)) {
+        return {
+          content: [{ type: 'text' as const, text: formatError(result, decl) }],
+        };
+      }
+
+      return {
+        content: [{ type: 'text' as const, text: result.body }],
+      };
+    };
+
     if (inputSchema) {
-      server.tool(cap.name, description, inputSchema, async (args) => {
-        return await executeCapability(cap, args, decl);
-      });
+      server.tool(cap.name, description, inputSchema, async (args) => handler(args));
     } else {
-      server.tool(cap.name, description, async () => {
-        return await executeCapability(cap, {}, decl);
-      });
+      server.tool(cap.name, description, async () => handler({}));
     }
   }
 
@@ -38,15 +54,14 @@ export function generateMcpServer(decl: PasoDeclaration): McpServer {
 /**
  * Start the MCP server on stdio transport.
  */
-export async function serveMcp(decl: PasoDeclaration): Promise<void> {
-  const server = generateMcpServer(decl);
+export async function serveMcp(decl: PasoDeclaration, onLog?: LogCallback): Promise<void> {
+  const server = generateMcpServer(decl, onLog);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
 /**
  * Build a Zod schema from a capability's inputs.
- * Returns undefined if the capability has no inputs.
  */
 function buildZodSchema(cap: PasoCapability): Record<string, z.ZodTypeAny> | undefined {
   if (!cap.inputs || Object.keys(cap.inputs).length === 0) return undefined;
@@ -70,9 +85,6 @@ function buildZodSchema(cap: PasoCapability): Record<string, z.ZodTypeAny> | und
   return shape;
 }
 
-/**
- * Convert a PasoInput to a Zod type.
- */
 function inputToZod(input: PasoInput): z.ZodTypeAny {
   switch (input.type) {
     case 'string':
@@ -98,9 +110,6 @@ function inputToZod(input: PasoInput): z.ZodTypeAny {
   }
 }
 
-/**
- * Build a rich tool description from the capability and service info.
- */
 function buildToolDescription(cap: PasoCapability, _decl: PasoDeclaration): string {
   let desc = cap.description;
 
@@ -120,116 +129,4 @@ function buildToolDescription(cap: PasoCapability, _decl: PasoDeclaration): stri
   }
 
   return desc;
-}
-
-/**
- * Execute a capability by making the actual HTTP request to the service.
- */
-async function executeCapability(
-  cap: PasoCapability,
-  args: Record<string, unknown>,
-  decl: PasoDeclaration,
-): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  // Build the URL
-  let path = cap.path;
-  const queryParams: Record<string, string> = {};
-  const bodyParams: Record<string, unknown> = {};
-
-  if (cap.inputs) {
-    for (const [name, input] of Object.entries(cap.inputs)) {
-      const value = args[name];
-      if (value === undefined) continue;
-
-      const location =
-        input.in || (['POST', 'PUT', 'PATCH'].includes(cap.method) ? 'body' : 'query');
-
-      switch (location) {
-        case 'path':
-          path = path.replace(`{${name}}`, encodeURIComponent(String(value)));
-          break;
-        case 'query':
-          queryParams[name] = String(value);
-          break;
-        case 'header':
-          // Headers handled separately
-          break;
-        case 'body':
-        default:
-          bodyParams[name] = value;
-          break;
-      }
-    }
-  }
-
-  const url = new URL(path, decl.service.base_url);
-  for (const [k, v] of Object.entries(queryParams)) {
-    url.searchParams.set(k, v);
-  }
-
-  // Build headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  };
-
-  if (decl.service.auth) {
-    // Auth token comes from environment variable: USEPASO_AUTH_TOKEN
-    const token = process.env.USEPASO_AUTH_TOKEN;
-    if (token) {
-      const authHeader = decl.service.auth.header || 'Authorization';
-      const prefix =
-        decl.service.auth.prefix ?? (decl.service.auth.type === 'bearer' ? 'Bearer' : '');
-      headers[authHeader] = prefix ? `${prefix} ${token}` : token;
-    }
-  }
-
-  // Add any header-type inputs
-  if (cap.inputs) {
-    for (const [name, input] of Object.entries(cap.inputs)) {
-      if (input.in === 'header' && args[name] !== undefined) {
-        headers[name] = String(args[name]);
-      }
-    }
-  }
-
-  try {
-    const fetchOptions: RequestInit = {
-      method: cap.method,
-      headers,
-    };
-
-    if (['POST', 'PUT', 'PATCH'].includes(cap.method) && Object.keys(bodyParams).length > 0) {
-      fetchOptions.body = JSON.stringify(bodyParams);
-    }
-
-    const response = await fetch(url.toString(), fetchOptions);
-    const text = await response.text();
-
-    let result: string;
-    try {
-      const json = JSON.parse(text);
-      result = JSON.stringify(json, null, 2);
-    } catch {
-      result = text;
-    }
-
-    if (!response.ok) {
-      return {
-        content: [{ type: 'text', text: `Error ${response.status}: ${result}` }],
-      };
-    }
-
-    return {
-      content: [{ type: 'text', text: result }],
-    };
-  } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Request failed: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-    };
-  }
 }
