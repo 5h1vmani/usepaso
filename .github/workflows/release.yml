@@ -61,9 +61,11 @@ jobs:
       - name: Build
         working-directory: packages/paso-js
         run: npm run build
-      - name: Publish (trusted publishing via OIDC)
+      - name: Publish to npm
         working-directory: packages/paso-js
         run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-pypi:
     name: Publish to PyPI
