@@ -36,7 +36,11 @@ function minimal(): PasoDeclaration {
         consent_required: true,
         inputs: {
           name: { type: 'string', required: true, description: 'Item name' },
-          priority: { type: 'enum', description: 'Priority level', values: ['low', 'medium', 'high'] },
+          priority: {
+            type: 'enum',
+            description: 'Priority level',
+            values: ['low', 'medium', 'high'],
+          },
         },
       },
     ],
@@ -71,7 +75,7 @@ describe('generateMcpServer', () => {
   });
 
   it('works with Sentry example', () => {
-    const decl = parseFile(join(__dirname, '../../../examples/sentry/paso.yaml'));
+    const decl = parseFile(join(__dirname, '../../../examples/sentry/usepaso.yaml'));
     const server = generateMcpServer(decl);
     const tools = Object.keys((server as any)._registeredTools);
     expect(tools.length).toBeGreaterThan(0);
@@ -80,7 +84,7 @@ describe('generateMcpServer', () => {
   });
 
   it('works with Stripe example (respects forbidden)', () => {
-    const decl = parseFile(join(__dirname, '../../../examples/stripe/paso.yaml'));
+    const decl = parseFile(join(__dirname, '../../../examples/stripe/usepaso.yaml'));
     const server = generateMcpServer(decl);
     const tools = Object.keys((server as any)._registeredTools);
     expect(tools).toContain('list_customers');

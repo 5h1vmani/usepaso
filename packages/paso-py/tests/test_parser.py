@@ -35,7 +35,7 @@ capabilities: []
 
 class TestParseFile:
     def test_parse_file_sentry_example(self):
-        example_path = Path(__file__).parent / "../../../examples/sentry/paso.yaml"
+        example_path = Path(__file__).parent / "../../../examples/sentry/usepaso.yaml"
         result = parse_file(str(example_path))
         assert isinstance(result, PasoDeclaration)
         assert result.version == "1.0"
@@ -43,7 +43,7 @@ class TestParseFile:
         assert len(result.capabilities) > 0
 
     def test_parse_file_stripe_example(self):
-        example_path = Path(__file__).parent / "../../../examples/stripe/paso.yaml"
+        example_path = Path(__file__).parent / "../../../examples/stripe/usepaso.yaml"
         result = parse_file(str(example_path))
         assert isinstance(result, PasoDeclaration)
         assert result.version == "1.0"
@@ -51,7 +51,7 @@ class TestParseFile:
         assert len(result.capabilities) > 0
 
     def test_parse_file_linear_example(self):
-        example_path = Path(__file__).parent / "../../../examples/linear/paso.yaml"
+        example_path = Path(__file__).parent / "../../../examples/linear/usepaso.yaml"
         result = parse_file(str(example_path))
         assert isinstance(result, PasoDeclaration)
         assert result.version == "1.0"
@@ -60,4 +60,4 @@ class TestParseFile:
 
     def test_parse_file_missing_file_throws(self):
         with pytest.raises(FileNotFoundError):
-            parse_file("/nonexistent/path/to/paso.yaml")
+            parse_file("/nonexistent/path/to/usepaso.yaml")

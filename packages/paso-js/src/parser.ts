@@ -3,7 +3,7 @@ import { parse as parseYaml } from 'yaml';
 import { PasoDeclaration } from './types';
 
 /**
- * Parse a paso.yaml file from disk and return the raw declaration object.
+ * Parse a usepaso.yaml file from disk and return the raw declaration object.
  * Does NOT validate — call validate() separately.
  */
 export function parseFile(filePath: string): PasoDeclaration {

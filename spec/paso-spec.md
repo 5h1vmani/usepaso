@@ -2,11 +2,11 @@
 
 ## Overview
 
-A Paso declaration is a YAML file (`paso.yaml`) that describes what AI agents can do with a service's API. The SDK reads this file and generates protocol-specific outputs (MCP servers, A2A endpoints, etc.).
+A Paso declaration is a YAML file (`usepaso.yaml`) that describes what AI agents can do with a service's API. The SDK reads this file and generates protocol-specific outputs (MCP servers, A2A endpoints, etc.).
 
 ## File Format
 
-The file MUST be named `paso.yaml` and placed in the project root (or specified via CLI flag).
+The file MUST be named `usepaso.yaml` and placed in the project root (or specified via CLI flag).
 
 ## Schema
 

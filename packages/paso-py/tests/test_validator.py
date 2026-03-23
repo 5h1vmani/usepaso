@@ -297,19 +297,19 @@ class TestValidatePermissions:
 
 class TestValidateExamples:
     def test_validates_sentry_example_without_errors(self):
-        example_path = Path(__file__).parent / "../../../examples/sentry/paso.yaml"
+        example_path = Path(__file__).parent / "../../../examples/sentry/usepaso.yaml"
         decl = parse_file(str(example_path))
         errors = validate(decl)
         assert errors == []
 
     def test_validates_stripe_example_without_errors(self):
-        example_path = Path(__file__).parent / "../../../examples/stripe/paso.yaml"
+        example_path = Path(__file__).parent / "../../../examples/stripe/usepaso.yaml"
         decl = parse_file(str(example_path))
         errors = validate(decl)
         assert errors == []
 
     def test_validates_linear_example_without_errors(self):
-        example_path = Path(__file__).parent / "../../../examples/linear/paso.yaml"
+        example_path = Path(__file__).parent / "../../../examples/linear/usepaso.yaml"
         decl = parse_file(str(example_path))
         errors = validate(decl)
         assert errors == []

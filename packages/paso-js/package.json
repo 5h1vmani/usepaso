@@ -11,18 +11,46 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "prepare": "cd ../.. && husky packages/paso-js/.husky"
   },
-  "keywords": ["ai", "agents", "mcp", "a2a", "api", "sdk", "agent-readiness"],
+  "lint-staged": {
+    "*.ts": ["eslint --fix", "prettier --write"]
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "mcp",
+    "a2a",
+    "api",
+    "sdk",
+    "agent-readiness"
+  ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/5h1vmani/usepaso.git"
+  },
+  "homepage": "https://usepaso.dev",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "yaml": "^2.7.1",
-    "commander": "^13.1.0"
+    "commander": "^13.1.0",
+    "yaml": "^2.7.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.3",
+    "eslint": "^10.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.57.2",
     "vitest": "^3.1.2"
   },
   "engines": {

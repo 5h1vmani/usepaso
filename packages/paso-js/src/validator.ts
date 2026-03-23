@@ -43,7 +43,10 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
     }
     if (decl.service.auth) {
       if (!VALID_AUTH_TYPES.includes(decl.service.auth.type)) {
-        errors.push({ path: 'service.auth.type', message: `auth.type must be one of: ${VALID_AUTH_TYPES.join(', ')}` });
+        errors.push({
+          path: 'service.auth.type',
+          message: `auth.type must be one of: ${VALID_AUTH_TYPES.join(', ')}`,
+        });
       }
     }
   }
@@ -63,7 +66,7 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
 
   // Permissions
   if (decl.permissions) {
-    const capNames = new Set((decl.capabilities || []).map(c => c.name));
+    const capNames = new Set((decl.capabilities || []).map((c) => c.name));
     const allReferenced = new Set<string>();
 
     for (const tier of ['read', 'write', 'admin', 'forbidden'] as const) {
@@ -72,7 +75,10 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
         for (const name of list) {
           // forbidden can reference capabilities not declared (to explicitly block API endpoints)
           if (tier !== 'forbidden' && !capNames.has(name)) {
-            errors.push({ path: `permissions.${tier}`, message: `references unknown capability "${name}"` });
+            errors.push({
+              path: `permissions.${tier}`,
+              message: `references unknown capability "${name}"`,
+            });
           }
           if (tier !== 'forbidden' && allReferenced.has(name)) {
             // Check if it's in forbidden
@@ -91,7 +97,10 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
       ]);
       for (const name of decl.permissions.forbidden) {
         if (tiered.has(name)) {
-          errors.push({ path: 'permissions.forbidden', message: `"${name}" cannot be both in a permission tier and forbidden` });
+          errors.push({
+            path: 'permissions.forbidden',
+            message: `"${name}" cannot be both in a permission tier and forbidden`,
+          });
         }
       }
     }
@@ -100,7 +109,11 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
   return errors;
 }
 
-function validateCapability(cap: PasoCapability, prefix: string, names: Set<string>): ValidationError[] {
+function validateCapability(
+  cap: PasoCapability,
+  prefix: string,
+  names: Set<string>,
+): ValidationError[] {
   const errors: ValidationError[] = [];
 
   if (!cap.name) {
@@ -122,7 +135,10 @@ function validateCapability(cap: PasoCapability, prefix: string, names: Set<stri
   if (!cap.method) {
     errors.push({ path: `${prefix}.method`, message: 'method is required' });
   } else if (!VALID_METHODS.includes(cap.method)) {
-    errors.push({ path: `${prefix}.method`, message: `method must be one of: ${VALID_METHODS.join(', ')}` });
+    errors.push({
+      path: `${prefix}.method`,
+      message: `method must be one of: ${VALID_METHODS.join(', ')}`,
+    });
   }
 
   if (!cap.path) {
@@ -134,7 +150,10 @@ function validateCapability(cap: PasoCapability, prefix: string, names: Set<stri
   if (!cap.permission) {
     errors.push({ path: `${prefix}.permission`, message: 'permission is required' });
   } else if (!VALID_PERMISSIONS.includes(cap.permission)) {
-    errors.push({ path: `${prefix}.permission`, message: `permission must be one of: ${VALID_PERMISSIONS.join(', ')}` });
+    errors.push({
+      path: `${prefix}.permission`,
+      message: `permission must be one of: ${VALID_PERMISSIONS.join(', ')}`,
+    });
   }
 
   // Validate inputs
@@ -144,7 +163,10 @@ function validateCapability(cap: PasoCapability, prefix: string, names: Set<stri
       if (!input.type) {
         errors.push({ path: inputPrefix, message: 'type is required' });
       } else if (!VALID_INPUT_TYPES.includes(input.type)) {
-        errors.push({ path: inputPrefix, message: `type must be one of: ${VALID_INPUT_TYPES.join(', ')}` });
+        errors.push({
+          path: inputPrefix,
+          message: `type must be one of: ${VALID_INPUT_TYPES.join(', ')}`,
+        });
       }
       if (input.type === 'enum' && (!input.values || input.values.length === 0)) {
         errors.push({ path: inputPrefix, message: 'enum type must have values defined' });
@@ -153,7 +175,10 @@ function validateCapability(cap: PasoCapability, prefix: string, names: Set<stri
         errors.push({ path: inputPrefix, message: 'description is required' });
       }
       if (input.in && !VALID_IN_VALUES.includes(input.in)) {
-        errors.push({ path: `${inputPrefix}.in`, message: `in must be one of: ${VALID_IN_VALUES.join(', ')}` });
+        errors.push({
+          path: `${inputPrefix}.in`,
+          message: `in must be one of: ${VALID_IN_VALUES.join(', ')}`,
+        });
       }
     }
   }
@@ -165,9 +190,15 @@ function validateCapability(cap: PasoCapability, prefix: string, names: Set<stri
       for (const param of pathParams) {
         const paramName = param.slice(1, -1);
         if (!cap.inputs[paramName]) {
-          errors.push({ path: `${prefix}.path`, message: `path parameter "{${paramName}}" not found in inputs` });
+          errors.push({
+            path: `${prefix}.path`,
+            message: `path parameter "{${paramName}}" not found in inputs`,
+          });
         } else if (cap.inputs[paramName].in && cap.inputs[paramName].in !== 'path') {
-          errors.push({ path: `${prefix}.inputs.${paramName}`, message: `path parameter must have in: path` });
+          errors.push({
+            path: `${prefix}.inputs.${paramName}`,
+            message: `path parameter must have in: path`,
+          });
         }
       }
     }
@@ -179,7 +210,10 @@ function validateCapability(cap: PasoCapability, prefix: string, names: Set<stri
       if (!output.type) {
         errors.push({ path: `${prefix}.output.${fieldName}`, message: 'type is required' });
       } else if (!VALID_OUTPUT_TYPES.includes(output.type)) {
-        errors.push({ path: `${prefix}.output.${fieldName}`, message: `type must be one of: ${VALID_OUTPUT_TYPES.join(', ')}` });
+        errors.push({
+          path: `${prefix}.output.${fieldName}`,
+          message: `type must be one of: ${VALID_OUTPUT_TYPES.join(', ')}`,
+        });
       }
     }
   }

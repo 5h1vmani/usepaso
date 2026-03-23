@@ -1,10 +1,15 @@
-# Paso
+# UsePaso
+
+[![CI](https://github.com/5h1vmani/usepaso/actions/workflows/ci.yml/badge.svg)](https://github.com/5h1vmani/usepaso/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/usepaso)](https://www.npmjs.com/package/usepaso)
+[![PyPI](https://img.shields.io/pypi/v/usepaso)](https://pypi.org/project/usepaso/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 **Make your API agent-ready in minutes.**
 
 One YAML declaration. Every agent protocol. Open source.
 
-Paso is an SDK that lets any service declare what AI agents can do, with what permissions, under what constraints. Write a single `paso.yaml` file, and Paso generates a working MCP server (with A2A and more coming). No protocol expertise required.
+Paso is an SDK that lets any service declare what AI agents can do, with what permissions, under what constraints. Write a single `usepaso.yaml` file, and Paso generates a working MCP server (with A2A and more coming). No protocol expertise required.
 
 ## Quick Start
 
@@ -13,7 +18,7 @@ Paso is an SDK that lets any service declare what AI agents can do, with what pe
 ```bash
 npm install usepaso
 npx usepaso init --name "MyService"
-# Edit paso.yaml to declare your capabilities
+# Edit usepaso.yaml to declare your capabilities
 npx usepaso serve
 ```
 
@@ -22,7 +27,7 @@ npx usepaso serve
 ```bash
 pip install usepaso
 usepaso init --name "MyService"
-# Edit paso.yaml to declare your capabilities
+# Edit usepaso.yaml to declare your capabilities
 usepaso serve
 ```
 
@@ -30,7 +35,7 @@ That's it. Your API is now agent-accessible via MCP.
 
 ## What You Write
 
-A `paso.yaml` file that describes your API's capabilities:
+A `usepaso.yaml` file that describes your API's capabilities:
 
 ```yaml
 version: "1.0"
@@ -90,7 +95,7 @@ permissions:
 ## What Paso Does With It
 
 ```
-paso.yaml
+usepaso.yaml
     │
     ├──→ MCP server (Claude, Cursor, any MCP client)
     ├──→ A2A endpoint (coming soon)
@@ -99,11 +104,11 @@ paso.yaml
 
 ## CLI Commands
 
-| Command | What it does |
-|---------|-------------|
-| `usepaso init` | Create a paso.yaml template |
-| `usepaso validate` | Check your declaration for errors |
-| `usepaso serve` | Start an MCP server from your declaration |
+| Command            | What it does                              |
+| ------------------ | ----------------------------------------- |
+| `usepaso init`     | Create a usepaso.yaml template               |
+| `usepaso validate` | Check your declaration for errors         |
+| `usepaso serve`    | Start an MCP server from your declaration |
 
 ### Options
 
@@ -115,10 +120,10 @@ usepaso serve -f ./my-api.yaml      # Serve a specific file
 
 ## Authentication
 
-Set the `PASO_AUTH_TOKEN` environment variable. Paso will include it in requests to your API based on the auth type in your declaration:
+Set the `USEPASO_AUTH_TOKEN` environment variable. Paso will include it in requests to your API based on the auth type in your declaration:
 
 ```bash
-export PASO_AUTH_TOKEN="your-api-token"
+export USEPASO_AUTH_TOKEN="your-api-token"
 usepaso serve
 ```
 
@@ -133,9 +138,9 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
   "mcpServers": {
     "my-service": {
       "command": "npx",
-      "args": ["usepaso", "serve", "-f", "/path/to/paso.yaml"],
+      "args": ["usepaso", "serve", "-f", "/path/to/usepaso.yaml"],
       "env": {
-        "PASO_AUTH_TOKEN": "your-token"
+        "USEPASO_AUTH_TOKEN": "your-token"
       }
     }
   }
@@ -150,9 +155,9 @@ Add to your Cursor MCP settings:
 {
   "my-service": {
     "command": "npx",
-    "args": ["usepaso", "serve", "-f", "/path/to/paso.yaml"],
+    "args": ["usepaso", "serve", "-f", "/path/to/usepaso.yaml"],
     "env": {
-      "PASO_AUTH_TOKEN": "your-token"
+      "USEPASO_AUTH_TOKEN": "your-token"
     }
   }
 }
@@ -173,9 +178,9 @@ See [spec/paso-spec.md](spec/paso-spec.md) for the full declaration format.
 ## Project Structure
 
 ```
-paso-dev/
+usepaso/
 ├── spec/                    # Capability declaration format spec
-├── examples/                # Real-world paso.yaml examples
+├── examples/                # Real-world usepaso.yaml examples
 ├── packages/
 │   ├── paso-js/             # Node.js SDK (TypeScript)
 │   └── paso-py/             # Python SDK

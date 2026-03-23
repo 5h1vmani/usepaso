@@ -85,7 +85,7 @@ function inputToZod(input: PasoInput): z.ZodTypeAny {
       return z.boolean();
     case 'enum':
       if (input.values && input.values.length > 0) {
-        const vals = input.values.map(v => String(v));
+        const vals = input.values.map((v) => String(v));
         return z.enum(vals as [string, ...string[]]);
       }
       return z.string();
@@ -101,11 +101,12 @@ function inputToZod(input: PasoInput): z.ZodTypeAny {
 /**
  * Build a rich tool description from the capability and service info.
  */
-function buildToolDescription(cap: PasoCapability, decl: PasoDeclaration): string {
+function buildToolDescription(cap: PasoCapability, _decl: PasoDeclaration): string {
   let desc = cap.description;
 
   if (cap.consent_required) {
-    desc += '\n\n⚠️ REQUIRES USER CONSENT: You must confirm this action with the user before executing.';
+    desc +=
+      '\n\n⚠️ REQUIRES USER CONSENT: You must confirm this action with the user before executing.';
   }
 
   if (cap.constraints && cap.constraints.length > 0) {
@@ -139,9 +140,8 @@ async function executeCapability(
       const value = args[name];
       if (value === undefined) continue;
 
-      const location = input.in || (
-        ['POST', 'PUT', 'PATCH'].includes(cap.method) ? 'body' : 'query'
-      );
+      const location =
+        input.in || (['POST', 'PUT', 'PATCH'].includes(cap.method) ? 'body' : 'query');
 
       switch (location) {
         case 'path':
@@ -169,15 +169,16 @@ async function executeCapability(
   // Build headers
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    Accept: 'application/json',
   };
 
   if (decl.service.auth) {
-    // Auth token comes from environment variable: PASO_AUTH_TOKEN
-    const token = process.env.PASO_AUTH_TOKEN;
+    // Auth token comes from environment variable: USEPASO_AUTH_TOKEN
+    const token = process.env.USEPASO_AUTH_TOKEN;
     if (token) {
       const authHeader = decl.service.auth.header || 'Authorization';
-      const prefix = decl.service.auth.prefix ?? (decl.service.auth.type === 'bearer' ? 'Bearer' : '');
+      const prefix =
+        decl.service.auth.prefix ?? (decl.service.auth.type === 'bearer' ? 'Bearer' : '');
       headers[authHeader] = prefix ? `${prefix} ${token}` : token;
     }
   }
@@ -223,7 +224,12 @@ async function executeCapability(
     };
   } catch (error) {
     return {
-      content: [{ type: 'text', text: `Request failed: ${error instanceof Error ? error.message : String(error)}` }],
+      content: [
+        {
+          type: 'text',
+          text: `Request failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
     };
   }
 }

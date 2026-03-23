@@ -41,27 +41,27 @@ capabilities:
 
 describe('parseFile', () => {
   it('parses the Sentry example', () => {
-    const filePath = join(__dirname, '../../../examples/sentry/paso.yaml');
+    const filePath = join(__dirname, '../../../examples/sentry/usepaso.yaml');
     const result = parseFile(filePath);
     expect(result.service.name).toBe('Sentry');
     expect(result.capabilities.length).toBeGreaterThan(0);
   });
 
   it('parses the Stripe example', () => {
-    const filePath = join(__dirname, '../../../examples/stripe/paso.yaml');
+    const filePath = join(__dirname, '../../../examples/stripe/usepaso.yaml');
     const result = parseFile(filePath);
     expect(result.service.name).toBe('Stripe');
     expect(result.capabilities.length).toBeGreaterThan(0);
   });
 
   it('parses the Linear example', () => {
-    const filePath = join(__dirname, '../../../examples/linear/paso.yaml');
+    const filePath = join(__dirname, '../../../examples/linear/usepaso.yaml');
     const result = parseFile(filePath);
     expect(result.service.name).toBe('Linear');
     expect(result.capabilities.length).toBeGreaterThan(0);
   });
 
   it('throws on missing file', () => {
-    expect(() => parseFile('/nonexistent/paso.yaml')).toThrow();
+    expect(() => parseFile('/nonexistent/usepaso.yaml')).toThrow();
   });
 });

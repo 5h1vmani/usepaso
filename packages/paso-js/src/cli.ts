@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { resolve, join } from 'path';
+import { resolve } from 'path';
 import { existsSync, writeFileSync } from 'fs';
 import { parseFile } from './parser';
 import { validate } from './validator';
@@ -9,19 +9,16 @@ import { serveMcp } from './generators/mcp';
 
 const program = new Command();
 
-program
-  .name('usepaso')
-  .description('Make your API agent-ready in minutes')
-  .version('0.1.0');
+program.name('usepaso').description('Make your API agent-ready in minutes').version('0.1.0');
 
 program
   .command('init')
-  .description('Create a paso.yaml template in the current directory')
+  .description('Create a usepaso.yaml template in the current directory')
   .option('-n, --name <name>', 'Service name')
   .action((opts) => {
-    const outPath = resolve('paso.yaml');
+    const outPath = resolve('usepaso.yaml');
     if (existsSync(outPath)) {
-      console.error('paso.yaml already exists in this directory.');
+      console.error('usepaso.yaml already exists in this directory.');
       process.exit(1);
     }
 
@@ -58,14 +55,14 @@ permissions:
 `;
 
     writeFileSync(outPath, template, 'utf-8');
-    console.log(`Created paso.yaml for "${name}"`);
+    console.log(`Created usepaso.yaml for "${name}"`);
     console.log('Edit the file to declare your API capabilities, then run: usepaso serve');
   });
 
 program
   .command('validate')
-  .description('Validate a paso.yaml file')
-  .option('-f, --file <path>', 'Path to paso.yaml', 'paso.yaml')
+  .description('Validate a usepaso.yaml file')
+  .option('-f, --file <path>', 'Path to usepaso.yaml', 'usepaso.yaml')
   .action((opts) => {
     const filePath = resolve(opts.file);
     if (!existsSync(filePath)) {
@@ -96,8 +93,8 @@ program
 
 program
   .command('serve')
-  .description('Start an MCP server from a paso.yaml declaration')
-  .option('-f, --file <path>', 'Path to paso.yaml', 'paso.yaml')
+  .description('Start an MCP server from a usepaso.yaml declaration')
+  .option('-f, --file <path>', 'Path to usepaso.yaml', 'usepaso.yaml')
   .action(async (opts) => {
     const filePath = resolve(opts.file);
     if (!existsSync(filePath)) {

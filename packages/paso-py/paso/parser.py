@@ -4,7 +4,7 @@ from paso.types import PasoDeclaration
 
 def parse_file(file_path: str) -> PasoDeclaration:
     """
-    Parse a paso.yaml file from disk and return the declaration object.
+    Parse a usepaso.yaml file from disk and return the declaration object.
     Does NOT validate — call validate() separately.
     """
     with open(file_path, 'r', encoding='utf-8') as f:

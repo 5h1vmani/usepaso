@@ -159,9 +159,9 @@ def _build_auth_header(auth) -> dict:
     Build authorization header from auth config.
 
     Supports bearer and api_key types.
-    Token read from PASO_AUTH_TOKEN environment variable.
+    Token read from USEPASO_AUTH_TOKEN environment variable.
     """
-    token = os.environ.get('PASO_AUTH_TOKEN')
+    token = os.environ.get('USEPASO_AUTH_TOKEN')
     if not token:
         return {}
 

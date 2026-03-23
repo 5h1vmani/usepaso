@@ -45,24 +45,24 @@ def main():
 
 
 @main.command()
-@click.option('--name', default='MyService', help='Service name for paso.yaml')
+@click.option('--name', default='MyService', help='Service name for usepaso.yaml')
 def init(name):
-    """Initialize a new paso.yaml file in the current directory."""
-    paso_file = Path('paso.yaml')
+    """Initialize a new usepaso.yaml file in the current directory."""
+    paso_file = Path('usepaso.yaml')
 
     if paso_file.exists():
-        click.echo("Error: paso.yaml already exists in this directory", err=True)
+        click.echo("Error: usepaso.yaml already exists in this directory", err=True)
         sys.exit(1)
 
     content = PASO_YAML_TEMPLATE.format(name=name)
     paso_file.write_text(content, encoding='utf-8')
-    click.echo(f"Created paso.yaml with service name '{name}'")
+    click.echo(f"Created usepaso.yaml with service name '{name}'")
 
 
 @main.command()
-@click.option('--file', '-f', default='paso.yaml', help='Path to paso.yaml file')
+@click.option('--file', '-f', default='usepaso.yaml', help='Path to usepaso.yaml file')
 def validate_cmd(file):
-    """Validate a paso.yaml file."""
+    """Validate a usepaso.yaml file."""
     try:
         decl = parse_file(file)
     except FileNotFoundError:
@@ -85,7 +85,7 @@ def validate_cmd(file):
 
 
 @main.command()
-@click.option('--file', '-f', default='paso.yaml', help='Path to paso.yaml file')
+@click.option('--file', '-f', default='usepaso.yaml', help='Path to usepaso.yaml file')
 def serve(file):
     """Parse, validate, and serve a Paso declaration as an MCP server on stdio."""
     try:
