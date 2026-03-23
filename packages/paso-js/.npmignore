@@ -1,7 +1,0 @@
-src/
-tests/
-tsconfig.json
-eslint.config.mjs
-.prettierrc
-commitlint.config.js
-.husky/
