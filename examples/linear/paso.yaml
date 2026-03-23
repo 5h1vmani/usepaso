@@ -1,0 +1,149 @@
+version: "1.0"
+
+service:
+  name: Linear
+  description: Issue tracking and project management for software teams
+  base_url: https://api.linear.app
+  auth:
+    type: bearer
+
+capabilities:
+  - name: list_issues
+    description: List issues, optionally filtered by team, status, or assignee
+    method: POST
+    path: /graphql
+    permission: read
+    inputs:
+      team_key:
+        type: string
+        description: "Team key to filter by (e.g., ENG, DES)"
+      status:
+        type: enum
+        values: [backlog, todo, in_progress, done, cancelled]
+        description: Filter by issue status
+      assignee:
+        type: string
+        description: Filter by assignee display name or email
+      limit:
+        type: integer
+        default: 25
+        description: Number of results to return
+    output:
+      issues:
+        type: array
+        description: List of issue objects with id, title, status, priority, assignee
+
+  - name: get_issue
+    description: Get details of a specific issue by identifier
+    method: POST
+    path: /graphql
+    permission: read
+    inputs:
+      identifier:
+        type: string
+        required: true
+        description: "Issue identifier (e.g., ENG-123)"
+    output:
+      id:
+        type: string
+      identifier:
+        type: string
+      title:
+        type: string
+      description:
+        type: string
+      status:
+        type: string
+      priority:
+        type: integer
+      assignee:
+        type: string
+
+  - name: create_issue
+    description: Create a new issue in a team
+    method: POST
+    path: /graphql
+    permission: write
+    consent_required: true
+    inputs:
+      team_key:
+        type: string
+        required: true
+        description: "Team key (e.g., ENG)"
+      title:
+        type: string
+        required: true
+        description: Issue title
+      description:
+        type: string
+        description: Issue description (supports markdown)
+      priority:
+        type: enum
+        values: [none, urgent, high, medium, low]
+        default: none
+        description: Issue priority
+      assignee:
+        type: string
+        description: Assignee email or display name
+    output:
+      id:
+        type: string
+      identifier:
+        type: string
+      url:
+        type: string
+
+  - name: update_issue_status
+    description: Change the status of an issue
+    method: POST
+    path: /graphql
+    permission: write
+    consent_required: true
+    inputs:
+      identifier:
+        type: string
+        required: true
+        description: "Issue identifier (e.g., ENG-123)"
+      status:
+        type: enum
+        required: true
+        values: [backlog, todo, in_progress, done, cancelled]
+        description: New status
+
+  - name: add_comment
+    description: Add a comment to an issue
+    method: POST
+    path: /graphql
+    permission: write
+    inputs:
+      identifier:
+        type: string
+        required: true
+        description: "Issue identifier (e.g., ENG-123)"
+      body:
+        type: string
+        required: true
+        description: Comment body (supports markdown)
+    output:
+      id:
+        type: string
+
+  - name: list_teams
+    description: List all teams in the workspace
+    method: POST
+    path: /graphql
+    permission: read
+    output:
+      teams:
+        type: array
+        description: List of team objects with id, key, name
+
+permissions:
+  read:
+    - list_issues
+    - get_issue
+    - list_teams
+  write:
+    - create_issue
+    - update_issue_status
+    - add_comment

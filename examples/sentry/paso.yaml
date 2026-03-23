@@ -1,0 +1,141 @@
+version: "1.0"
+
+service:
+  name: Sentry
+  description: Error monitoring and performance tracking for software teams
+  base_url: https://sentry.io/api/0
+  version: "0"
+  auth:
+    type: bearer
+
+capabilities:
+  - name: list_issues
+    description: List issues (errors) in a project, optionally filtered by status or search query
+    method: GET
+    path: /projects/{organization_slug}/{project_slug}/issues/
+    permission: read
+    inputs:
+      organization_slug:
+        type: string
+        required: true
+        description: The organization slug
+        in: path
+      project_slug:
+        type: string
+        required: true
+        description: The project slug
+        in: path
+      query:
+        type: string
+        description: "Search query (e.g., 'is:unresolved assigned:me')"
+        in: query
+      sort:
+        type: enum
+        values: [date, new, freq, priority]
+        default: date
+        description: Sort order for results
+        in: query
+    output:
+      issues:
+        type: array
+        description: List of issue objects with id, title, status, count, first/last seen
+
+  - name: get_issue
+    description: Get details of a specific issue by ID
+    method: GET
+    path: /issues/{issue_id}/
+    permission: read
+    inputs:
+      issue_id:
+        type: string
+        required: true
+        description: The issue ID
+        in: path
+    output:
+      id:
+        type: string
+      title:
+        type: string
+      status:
+        type: string
+      count:
+        type: integer
+      first_seen:
+        type: string
+      last_seen:
+        type: string
+
+  - name: resolve_issue
+    description: Mark an issue as resolved
+    method: PUT
+    path: /issues/{issue_id}/
+    permission: write
+    consent_required: true
+    inputs:
+      issue_id:
+        type: string
+        required: true
+        description: The issue ID
+        in: path
+      status:
+        type: enum
+        required: true
+        values: [resolved, unresolved, ignored]
+        description: New status for the issue
+
+  - name: assign_issue
+    description: Assign an issue to a team member
+    method: PUT
+    path: /issues/{issue_id}/
+    permission: write
+    consent_required: true
+    inputs:
+      issue_id:
+        type: string
+        required: true
+        description: The issue ID
+        in: path
+      assigned_to:
+        type: string
+        required: true
+        description: Username or team slug to assign to
+
+  - name: list_projects
+    description: List all projects in an organization
+    method: GET
+    path: /organizations/{organization_slug}/projects/
+    permission: read
+    inputs:
+      organization_slug:
+        type: string
+        required: true
+        description: The organization slug
+        in: path
+    output:
+      projects:
+        type: array
+        description: List of project objects with id, slug, name, platform
+
+  - name: delete_issue
+    description: Permanently delete an issue and all its events
+    method: DELETE
+    path: /issues/{issue_id}/
+    permission: admin
+    consent_required: true
+    inputs:
+      issue_id:
+        type: string
+        required: true
+        description: The issue ID
+        in: path
+
+permissions:
+  read:
+    - list_issues
+    - get_issue
+    - list_projects
+  write:
+    - resolve_issue
+    - assign_issue
+  admin:
+    - delete_issue

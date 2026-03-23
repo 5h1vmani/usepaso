@@ -1,0 +1,167 @@
+version: "1.0"
+
+service:
+  name: Stripe
+  description: Payment processing and billing infrastructure for internet businesses
+  base_url: https://api.stripe.com/v1
+  version: "v1"
+  auth:
+    type: bearer
+
+capabilities:
+  - name: list_customers
+    description: List customers, optionally filtered by email
+    method: GET
+    path: /customers
+    permission: read
+    inputs:
+      email:
+        type: string
+        description: Filter by exact email match
+        in: query
+      limit:
+        type: integer
+        description: Number of results (1-100)
+        default: 10
+        in: query
+    output:
+      data:
+        type: array
+        description: List of customer objects
+      has_more:
+        type: boolean
+
+  - name: get_customer
+    description: Retrieve a specific customer by ID
+    method: GET
+    path: /customers/{customer_id}
+    permission: read
+    inputs:
+      customer_id:
+        type: string
+        required: true
+        description: The Stripe customer ID (e.g., cus_xxx)
+        in: path
+    output:
+      id:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      balance:
+        type: integer
+        description: Current balance in cents
+
+  - name: create_customer
+    description: Create a new customer
+    method: POST
+    path: /customers
+    permission: write
+    consent_required: true
+    inputs:
+      email:
+        type: string
+        required: true
+        description: Customer email address
+      name:
+        type: string
+        description: Customer full name
+      description:
+        type: string
+        description: Internal description
+    output:
+      id:
+        type: string
+      email:
+        type: string
+
+  - name: create_payment_intent
+    description: Create a payment intent to charge a customer
+    method: POST
+    path: /payment_intents
+    permission: write
+    consent_required: true
+    inputs:
+      amount:
+        type: integer
+        required: true
+        description: Amount in cents (e.g., 2000 = $20.00)
+      currency:
+        type: string
+        required: true
+        description: Three-letter ISO currency code (e.g., usd)
+      customer:
+        type: string
+        description: Stripe customer ID to charge
+    output:
+      id:
+        type: string
+      status:
+        type: string
+      client_secret:
+        type: string
+    constraints:
+      - max_value: 99999999
+        description: Maximum single charge is $999,999.99
+
+  - name: list_invoices
+    description: List invoices, optionally filtered by customer
+    method: GET
+    path: /invoices
+    permission: read
+    inputs:
+      customer:
+        type: string
+        description: Filter by customer ID
+        in: query
+      status:
+        type: enum
+        values: [draft, open, paid, void, uncollectible]
+        description: Filter by invoice status
+        in: query
+      limit:
+        type: integer
+        default: 10
+        description: Number of results (1-100)
+        in: query
+    output:
+      data:
+        type: array
+      has_more:
+        type: boolean
+
+  - name: refund_payment
+    description: Create a refund for a payment intent
+    method: POST
+    path: /refunds
+    permission: admin
+    consent_required: true
+    inputs:
+      payment_intent:
+        type: string
+        required: true
+        description: The payment intent ID to refund
+      amount:
+        type: integer
+        description: Amount to refund in cents (partial refund). Omit for full refund.
+    output:
+      id:
+        type: string
+      status:
+        type: string
+      amount:
+        type: integer
+
+permissions:
+  read:
+    - list_customers
+    - get_customer
+    - list_invoices
+  write:
+    - create_customer
+    - create_payment_intent
+  admin:
+    - refund_payment
+  forbidden:
+    - delete_customer
