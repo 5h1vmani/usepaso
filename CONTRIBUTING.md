@@ -50,6 +50,8 @@ refactor: code change that neither fixes nor adds
 chore: tooling, CI, dependencies
 ```
 
+**No signatures or author lines.** Do not add `Co-Authored-By`, `Signed-off-by`, or any other attribution to commit messages. Keep them clean.
+
 ## Project Structure
 
 ```

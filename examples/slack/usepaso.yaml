@@ -1,0 +1,193 @@
+version: "1.0"
+
+service:
+  name: Slack
+  description: Team messaging, channels, and workflow automation platform
+  base_url: https://slack.com/api
+  version: "v2"
+  auth:
+    type: bearer
+
+capabilities:
+  - name: list_channels
+    description: List public channels in the workspace
+    method: GET
+    path: /conversations.list
+    permission: read
+    inputs:
+      types:
+        type: string
+        default: public_channel
+        description: "Comma-separated channel types (public_channel, private_channel, mpim, im)"
+        in: query
+      limit:
+        type: integer
+        default: 100
+        description: Maximum results to return (max 1000)
+        in: query
+      exclude_archived:
+        type: boolean
+        default: true
+        description: Exclude archived channels
+        in: query
+    output:
+      channels:
+        type: array
+        description: List of channel objects with id, name, purpose, num_members
+
+  - name: send_message
+    description: Send a message to a channel or DM
+    method: POST
+    path: /chat.postMessage
+    permission: write
+    consent_required: true
+    inputs:
+      channel:
+        type: string
+        required: true
+        description: Channel ID or user ID to send to
+      text:
+        type: string
+        required: true
+        description: Message text (supports Slack mrkdwn formatting)
+      thread_ts:
+        type: string
+        description: Timestamp of parent message to reply in thread
+    output:
+      ok:
+        type: boolean
+      ts:
+        type: string
+        description: Timestamp of the sent message
+      channel:
+        type: string
+    constraints:
+      - text_max_length: 40000
+        description: Message text must be 40,000 characters or fewer
+
+  - name: get_channel_history
+    description: Fetch recent messages from a channel
+    method: GET
+    path: /conversations.history
+    permission: read
+    inputs:
+      channel:
+        type: string
+        required: true
+        description: Channel ID
+        in: query
+      limit:
+        type: integer
+        default: 20
+        description: Number of messages to return (max 1000)
+        in: query
+      oldest:
+        type: string
+        description: Only messages after this Unix timestamp
+        in: query
+      latest:
+        type: string
+        description: Only messages before this Unix timestamp
+        in: query
+    output:
+      messages:
+        type: array
+        description: List of message objects with user, text, ts, thread_ts
+      has_more:
+        type: boolean
+
+  - name: add_reaction
+    description: Add an emoji reaction to a message
+    method: POST
+    path: /reactions.add
+    permission: write
+    consent_required: true
+    inputs:
+      channel:
+        type: string
+        required: true
+        description: Channel containing the message
+      timestamp:
+        type: string
+        required: true
+        description: Timestamp of the message to react to
+      name:
+        type: string
+        required: true
+        description: "Emoji name without colons (e.g., thumbsup)"
+    output:
+      ok:
+        type: boolean
+
+  - name: search_messages
+    description: Search for messages matching a query across the workspace
+    method: GET
+    path: /search.messages
+    permission: read
+    inputs:
+      query:
+        type: string
+        required: true
+        description: Search query
+        in: query
+      sort:
+        type: enum
+        values: [score, timestamp]
+        default: score
+        in: query
+      count:
+        type: integer
+        default: 20
+        description: Results per page (max 100)
+        in: query
+    output:
+      messages:
+        type: object
+        description: Object with matches array and pagination info
+
+  - name: get_user_info
+    description: Get profile information for a user
+    method: GET
+    path: /users.info
+    permission: read
+    inputs:
+      user:
+        type: string
+        required: true
+        description: User ID
+        in: query
+    output:
+      user:
+        type: object
+        description: User object with id, name, real_name, profile, is_admin
+
+  - name: delete_message
+    description: Delete a message from a channel
+    method: POST
+    path: /chat.delete
+    permission: admin
+    consent_required: true
+    inputs:
+      channel:
+        type: string
+        required: true
+        description: Channel containing the message
+      ts:
+        type: string
+        required: true
+        description: Timestamp of the message to delete
+
+permissions:
+  read:
+    - list_channels
+    - get_channel_history
+    - search_messages
+    - get_user_info
+  write:
+    - send_message
+    - add_reaction
+  admin:
+    - delete_message
+  forbidden:
+    - delete_channel
+    - remove_user

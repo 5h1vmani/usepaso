@@ -144,6 +144,7 @@ Both SDKs must produce the same CLI output for the same operation. If you change
 - **TypeScript:** ESLint + Prettier enforced. Single quotes, trailing commas, 100 char width.
 - **Python:** Standard library style. Type hints where helpful. No formatter enforced yet.
 - **Commits:** [Conventional Commits](https://www.conventionalcommits.org/) — `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`.
+- **No signatures or author lines in commit messages.** Do not add `Co-Authored-By`, `Signed-off-by`, or any other attribution lines. Keep commit messages clean — just the conventional commit message, nothing else.
 - **Tests:** All examples in `examples/` must pass `usepaso validate`. Parser and validator have unit tests. New features need tests.
 
 ## How to Add a New CLI Command

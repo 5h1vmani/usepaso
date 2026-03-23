@@ -1,0 +1,262 @@
+version: "1.0"
+
+service:
+  name: GitHub
+  description: Code hosting, collaboration, and CI/CD platform for developers
+  base_url: https://api.github.com
+  version: "2022-11-28"
+  auth:
+    type: bearer
+
+capabilities:
+  - name: list_repos
+    description: List repositories for the authenticated user
+    method: GET
+    path: /user/repos
+    permission: read
+    inputs:
+      sort:
+        type: enum
+        values: [created, updated, pushed, full_name]
+        default: full_name
+        description: Sort field
+        in: query
+      per_page:
+        type: integer
+        default: 30
+        description: Results per page (max 100)
+        in: query
+    output:
+      repos:
+        type: array
+        description: List of repository objects with id, name, full_name, private, html_url
+
+  - name: get_repo
+    description: Get details of a specific repository
+    method: GET
+    path: /repos/{owner}/{repo}
+    permission: read
+    inputs:
+      owner:
+        type: string
+        required: true
+        description: Repository owner (user or org)
+        in: path
+      repo:
+        type: string
+        required: true
+        description: Repository name
+        in: path
+    output:
+      id:
+        type: integer
+      full_name:
+        type: string
+      description:
+        type: string
+      stargazers_count:
+        type: integer
+      open_issues_count:
+        type: integer
+
+  - name: list_issues
+    description: List issues in a repository
+    method: GET
+    path: /repos/{owner}/{repo}/issues
+    permission: read
+    inputs:
+      owner:
+        type: string
+        required: true
+        description: Repository owner
+        in: path
+      repo:
+        type: string
+        required: true
+        description: Repository name
+        in: path
+      state:
+        type: enum
+        values: [open, closed, all]
+        default: open
+        description: Filter by state
+        in: query
+      labels:
+        type: string
+        description: Comma-separated list of label names
+        in: query
+      per_page:
+        type: integer
+        default: 30
+        description: Results per page (max 100)
+        in: query
+    output:
+      issues:
+        type: array
+        description: List of issue objects with id, number, title, state, labels, assignees
+
+  - name: create_issue
+    description: Create a new issue in a repository
+    method: POST
+    path: /repos/{owner}/{repo}/issues
+    permission: write
+    consent_required: true
+    inputs:
+      owner:
+        type: string
+        required: true
+        description: Repository owner
+        in: path
+      repo:
+        type: string
+        required: true
+        description: Repository name
+        in: path
+      title:
+        type: string
+        required: true
+        description: Issue title
+      body:
+        type: string
+        description: Issue body (Markdown supported)
+      labels:
+        type: array
+        description: Labels to apply
+      assignees:
+        type: array
+        description: Usernames to assign
+    output:
+      id:
+        type: integer
+      number:
+        type: integer
+      html_url:
+        type: string
+    constraints:
+      - title_max_length: 256
+        description: Issue titles must be 256 characters or fewer
+
+  - name: list_pull_requests
+    description: List pull requests in a repository
+    method: GET
+    path: /repos/{owner}/{repo}/pulls
+    permission: read
+    inputs:
+      owner:
+        type: string
+        required: true
+        description: Repository owner
+        in: path
+      repo:
+        type: string
+        required: true
+        description: Repository name
+        in: path
+      state:
+        type: enum
+        values: [open, closed, all]
+        default: open
+        description: Filter by state
+        in: query
+      sort:
+        type: enum
+        values: [created, updated, popularity, long-running]
+        default: created
+        in: query
+      per_page:
+        type: integer
+        default: 30
+        in: query
+    output:
+      pull_requests:
+        type: array
+        description: List of PR objects with number, title, state, head, base, user
+
+  - name: create_comment
+    description: Add a comment to an issue or pull request
+    method: POST
+    path: /repos/{owner}/{repo}/issues/{issue_number}/comments
+    permission: write
+    consent_required: true
+    inputs:
+      owner:
+        type: string
+        required: true
+        description: Repository owner
+        in: path
+      repo:
+        type: string
+        required: true
+        description: Repository name
+        in: path
+      issue_number:
+        type: integer
+        required: true
+        description: Issue or PR number
+        in: path
+      body:
+        type: string
+        required: true
+        description: Comment body (Markdown supported)
+    output:
+      id:
+        type: integer
+      html_url:
+        type: string
+
+  - name: list_workflows
+    description: List GitHub Actions workflows in a repository
+    method: GET
+    path: /repos/{owner}/{repo}/actions/workflows
+    permission: read
+    inputs:
+      owner:
+        type: string
+        required: true
+        description: Repository owner
+        in: path
+      repo:
+        type: string
+        required: true
+        description: Repository name
+        in: path
+    output:
+      total_count:
+        type: integer
+      workflows:
+        type: array
+        description: List of workflow objects with id, name, state, path
+
+  - name: delete_repo
+    description: Delete a repository permanently
+    method: DELETE
+    path: /repos/{owner}/{repo}
+    permission: admin
+    consent_required: true
+    inputs:
+      owner:
+        type: string
+        required: true
+        description: Repository owner
+        in: path
+      repo:
+        type: string
+        required: true
+        description: Repository name
+        in: path
+
+permissions:
+  read:
+    - list_repos
+    - get_repo
+    - list_issues
+    - list_pull_requests
+    - list_workflows
+  write:
+    - create_issue
+    - create_comment
+  admin:
+    - delete_repo
+  forbidden:
+    - transfer_repo
+    - update_billing

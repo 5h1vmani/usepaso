@@ -1,0 +1,209 @@
+version: "1.0"
+
+service:
+  name: Twilio
+  description: Cloud communications platform for SMS, voice, and messaging
+  base_url: https://api.twilio.com/2010-04-01/Accounts/{account_sid}
+  version: "2010-04-01"
+  auth:
+    type: basic
+
+capabilities:
+  - name: send_sms
+    description: Send an SMS message to a phone number
+    method: POST
+    path: /Messages.json
+    permission: write
+    consent_required: true
+    inputs:
+      To:
+        type: string
+        required: true
+        description: "Destination phone number in E.164 format (e.g., +15551234567)"
+      From:
+        type: string
+        required: true
+        description: "Twilio phone number to send from in E.164 format"
+      Body:
+        type: string
+        required: true
+        description: The message body
+    output:
+      sid:
+        type: string
+        description: Message SID
+      status:
+        type: string
+        description: "Message status (queued, sending, sent, delivered, failed)"
+      date_created:
+        type: string
+    constraints:
+      - body_max_length: 1600
+        description: SMS body must be 1,600 characters or fewer
+
+  - name: list_messages
+    description: List sent and received messages
+    method: GET
+    path: /Messages.json
+    permission: read
+    inputs:
+      To:
+        type: string
+        description: Filter by destination number
+        in: query
+      From:
+        type: string
+        description: Filter by sender number
+        in: query
+      DateSent:
+        type: string
+        description: "Filter by date sent (YYYY-MM-DD)"
+        in: query
+      PageSize:
+        type: integer
+        default: 50
+        description: Results per page (max 1000)
+        in: query
+    output:
+      messages:
+        type: array
+        description: List of message objects with sid, body, from, to, status, date_sent
+
+  - name: get_message
+    description: Get details of a specific message by SID
+    method: GET
+    path: /Messages/{message_sid}.json
+    permission: read
+    inputs:
+      message_sid:
+        type: string
+        required: true
+        description: The message SID
+        in: path
+    output:
+      sid:
+        type: string
+      body:
+        type: string
+      from:
+        type: string
+      to:
+        type: string
+      status:
+        type: string
+      price:
+        type: string
+      date_sent:
+        type: string
+
+  - name: make_call
+    description: Initiate an outbound phone call
+    method: POST
+    path: /Calls.json
+    permission: write
+    consent_required: true
+    inputs:
+      To:
+        type: string
+        required: true
+        description: "Destination phone number in E.164 format"
+      From:
+        type: string
+        required: true
+        description: "Twilio phone number to call from"
+      Url:
+        type: string
+        required: true
+        description: TwiML URL for call instructions
+    output:
+      sid:
+        type: string
+        description: Call SID
+      status:
+        type: string
+
+  - name: list_calls
+    description: List call logs
+    method: GET
+    path: /Calls.json
+    permission: read
+    inputs:
+      To:
+        type: string
+        description: Filter by destination number
+        in: query
+      From:
+        type: string
+        description: Filter by caller number
+        in: query
+      Status:
+        type: enum
+        values: [queued, ringing, in-progress, completed, busy, no-answer, canceled, failed]
+        description: Filter by call status
+        in: query
+      PageSize:
+        type: integer
+        default: 50
+        description: Results per page (max 1000)
+        in: query
+    output:
+      calls:
+        type: array
+        description: List of call objects with sid, from, to, status, duration, price
+
+  - name: list_phone_numbers
+    description: List phone numbers owned by the account
+    method: GET
+    path: /IncomingPhoneNumbers.json
+    permission: read
+    inputs:
+      PhoneNumber:
+        type: string
+        description: Filter by exact phone number
+        in: query
+      PageSize:
+        type: integer
+        default: 50
+        in: query
+    output:
+      incoming_phone_numbers:
+        type: array
+        description: List of phone number objects with sid, phone_number, friendly_name, capabilities
+
+  - name: get_usage
+    description: Get account usage records for billing and monitoring
+    method: GET
+    path: /Usage/Records.json
+    permission: read
+    inputs:
+      Category:
+        type: enum
+        values: [sms, calls, phonenumbers, recordings, totalprice]
+        description: Filter by usage category
+        in: query
+      StartDate:
+        type: string
+        description: "Start date (YYYY-MM-DD)"
+        in: query
+      EndDate:
+        type: string
+        description: "End date (YYYY-MM-DD)"
+        in: query
+    output:
+      usage_records:
+        type: array
+        description: List of usage records with category, description, count, price, usage
+
+permissions:
+  read:
+    - list_messages
+    - get_message
+    - list_calls
+    - list_phone_numbers
+    - get_usage
+  write:
+    - send_sms
+    - make_call
+  forbidden:
+    - delete_account
+    - release_phone_number
