@@ -1,6 +1,6 @@
 {
   "name": "usepaso",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Make your API agent-ready in minutes. One declaration, every protocol.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
