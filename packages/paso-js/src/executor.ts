@@ -18,11 +18,13 @@ export interface ExecutionResult {
 
 /**
  * Build the HTTP request for a capability without executing it.
+ * Note: does not validate required inputs — callers (CLI, MCP) must validate before calling.
  */
 export function buildRequest(
   cap: PasoCapability,
   args: Record<string, unknown>,
   decl: PasoDeclaration,
+  authToken?: string,
 ): ExecutionRequest {
   let path = cap.path;
   const queryParams: Record<string, string> = {};
@@ -74,7 +76,7 @@ export function buildRequest(
     if (decl.service.auth.type === 'none') {
       // Skip auth — notice is logged once at command startup, not per-request
     } else {
-      const token = process.env.USEPASO_AUTH_TOKEN;
+      const token = authToken ?? process.env.USEPASO_AUTH_TOKEN;
       if (token) {
         const authType = decl.service.auth.type;
         const authHeader = decl.service.auth.header || 'Authorization';
@@ -176,7 +178,11 @@ export async function executeRequest(req: ExecutionRequest): Promise<ExecutionRe
 /**
  * Format a friendly error message for common HTTP status codes.
  */
-export function formatError(result: ExecutionResult, decl: PasoDeclaration): string {
+export function formatError(
+  result: ExecutionResult,
+  decl: PasoDeclaration,
+  authToken?: string,
+): string {
   if (result.error) {
     return `Request failed: ${result.error}`;
   }
@@ -185,7 +191,7 @@ export function formatError(result: ExecutionResult, decl: PasoDeclaration): str
 
   if (result.status === 401) {
     const authType = decl.service.auth?.type || 'unknown';
-    const hasToken = !!process.env.USEPASO_AUTH_TOKEN;
+    const hasToken = !!(authToken ?? process.env.USEPASO_AUTH_TOKEN);
     let msg = `Error 401: Authentication failed.`;
     if (!hasToken) {
       msg += `\n  → USEPASO_AUTH_TOKEN is not set. Set it with: export USEPASO_AUTH_TOKEN=your-token`;

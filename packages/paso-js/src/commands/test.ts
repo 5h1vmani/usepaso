@@ -102,13 +102,14 @@ export function registerTest(program: Command): void {
           process.exit(1);
         }
 
-        const req = buildRequest(cap, args, decl);
+        const authToken = process.env.USEPASO_AUTH_TOKEN;
+        const req = buildRequest(cap, args, decl, authToken);
 
         if (opts.dryRun) {
           console.log('--- DRY RUN (no request will be made) ---');
           console.log('');
           console.log(`${req.method} ${req.url}`);
-          const token = process.env.USEPASO_AUTH_TOKEN;
+          const token = authToken;
           for (const [k, v] of Object.entries(req.headers)) {
             const display =
               token && token.length >= 8 && v.includes(token) ? `${v.slice(0, 12)}...` : v;
@@ -129,7 +130,7 @@ export function registerTest(program: Command): void {
         const result = await executeRequest(req);
 
         if (result.error) {
-          console.error(formatError(result, decl));
+          console.error(formatError(result, decl, authToken));
           process.exit(1);
         }
 
@@ -137,7 +138,7 @@ export function registerTest(program: Command): void {
         console.log('');
 
         if (result.status && result.status >= 400) {
-          console.error(formatError(result, decl));
+          console.error(formatError(result, decl, authToken));
           process.exit(1);
         }
 

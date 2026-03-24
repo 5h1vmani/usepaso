@@ -25,21 +25,22 @@ export function generateMcpServer(decl: PasoDeclaration, onLog?: LogCallback): M
     const description = buildToolDescription(cap, decl);
 
     const handler = async (args: Record<string, unknown>) => {
-      const req = buildRequest(cap, args, decl);
+      const authToken = process.env.USEPASO_AUTH_TOKEN;
+      const req = buildRequest(cap, args, decl, authToken);
       const result = await executeRequest(req);
 
       if (onLog) onLog(cap.name, result, decl);
 
       if (result.error) {
         return {
-          content: [{ type: 'text' as const, text: formatError(result, decl) }],
+          content: [{ type: 'text' as const, text: formatError(result, decl, authToken) }],
         };
       }
 
       if (result.status && result.status >= 400) {
         const text = result.body
-          ? `${formatError(result, decl)}\n\nResponse body:\n${result.body}`
-          : formatError(result, decl);
+          ? `${formatError(result, decl, authToken)}\n\nResponse body:\n${result.body}`
+          : formatError(result, decl, authToken);
         return {
           content: [{ type: 'text' as const, text }],
         };
@@ -114,8 +115,9 @@ function inputToZod(input: PasoInput): z.ZodTypeAny {
         if (allStrings) {
           return z.enum(input.values as [string, ...string[]]);
         }
-        // Mixed or numeric enums: use z.union of literals to preserve types
+        // Mixed or numeric enums: use z.literal / z.union to preserve types
         const literals = input.values.map((v) => z.literal(v as string | number | boolean));
+        if (literals.length === 1) return literals[0];
         return z.union(literals as unknown as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
       }
       return z.string();

@@ -1,6 +1,9 @@
+import asyncio
+import json
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
-from paso.executor import build_request
+from paso.executor import build_request, execute_request, format_error
 from paso.types import (
     PasoDeclaration, PasoService, PasoCapability,
     PasoInput, PasoAuth
@@ -125,8 +128,7 @@ class TestContentType:
 
 
 class TestBuildRequestAuth:
-    def test_sends_bearer_token_for_oauth2(self, monkeypatch):
-        monkeypatch.setenv("USEPASO_AUTH_TOKEN", "test-token")
+    def test_sends_bearer_token_for_oauth2(self):
         decl = make_decl(
             base_url="https://api.example.com",
             auth=PasoAuth(type="oauth2"),
@@ -135,11 +137,10 @@ class TestBuildRequestAuth:
             name="get_item", description="Get", method="GET",
             path="/items", permission="read",
         )
-        req = build_request(cap, {}, decl)
+        req = build_request(cap, {}, decl, auth_token="test-token")
         assert req["headers"]["Authorization"] == "Bearer test-token"
 
-    def test_skips_auth_when_type_is_none(self, monkeypatch):
-        monkeypatch.setenv("USEPASO_AUTH_TOKEN", "test-token")
+    def test_skips_auth_when_type_is_none(self):
         decl = make_decl(
             base_url="https://api.example.com",
             auth=PasoAuth(type="none"),
@@ -148,11 +149,10 @@ class TestBuildRequestAuth:
             name="get_item", description="Get", method="GET",
             path="/items", permission="read",
         )
-        req = build_request(cap, {}, decl)
+        req = build_request(cap, {}, decl, auth_token="test-token")
         assert "Authorization" not in req["headers"]
 
-    def test_uses_authorization_header_for_api_key(self, monkeypatch):
-        monkeypatch.setenv("USEPASO_AUTH_TOKEN", "sk-test-key")
+    def test_uses_authorization_header_for_api_key(self):
         decl = make_decl(
             base_url="https://api.example.com",
             auth=PasoAuth(type="api_key"),
@@ -161,7 +161,7 @@ class TestBuildRequestAuth:
             name="get_item", description="Get", method="GET",
             path="/items", permission="read",
         )
-        req = build_request(cap, {}, decl)
+        req = build_request(cap, {}, decl, auth_token="sk-test-key")
         assert req["headers"]["Authorization"] == "sk-test-key"
 
 
@@ -202,9 +202,184 @@ class TestHeaderRedaction:
         assert display == "application/json"
 
 
+class TestExecuteRequest:
+    def _run(self, coro):
+        return asyncio.run(coro)
+
+    def test_successful_json_response(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.reason_phrase = "OK"
+        mock_response.headers = {}
+        mock_response.json.return_value = {"id": 1, "name": "test"}
+        mock_response.text = '{"id":1,"name":"test"}'
+
+        mock_client = AsyncMock()
+        mock_client.request.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+            result = self._run(execute_request({
+                "method": "GET", "url": "https://api.example.com/items",
+                "headers": {"Accept": "application/json"},
+            }))
+
+        assert result["status"] == 200
+        assert '"id": 1' in result["body"]
+        assert result["duration_ms"] >= 0
+        assert result["error"] is None
+
+    def test_network_error(self):
+        import httpx
+        mock_client = AsyncMock()
+        mock_client.request.side_effect = httpx.RequestError("connection refused")
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+            result = self._run(execute_request({
+                "method": "GET", "url": "https://api.example.com/items",
+                "headers": {},
+            }))
+
+        assert "connection refused" in result["error"]
+        assert result["status"] is None
+
+    def test_large_response_rejected(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {"content-length": "20000000"}
+
+        mock_client = AsyncMock()
+        mock_client.request.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+            result = self._run(execute_request({
+                "method": "GET", "url": "https://api.example.com/large",
+                "headers": {},
+            }))
+
+        assert "Response too large" in result["error"]
+
+    def test_non_json_response(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.reason_phrase = "OK"
+        mock_response.headers = {}
+        mock_response.json.side_effect = ValueError("not json")
+        mock_response.text = "plain text response"
+
+        mock_client = AsyncMock()
+        mock_client.request.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+            result = self._run(execute_request({
+                "method": "GET", "url": "https://api.example.com/health",
+                "headers": {},
+            }))
+
+        assert result["body"] == "plain text response"
+
+    def test_4xx_returns_status(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.reason_phrase = "Not Found"
+        mock_response.headers = {}
+        mock_response.json.return_value = {"error": "not found"}
+        mock_response.text = '{"error":"not found"}'
+
+        mock_client = AsyncMock()
+        mock_client.request.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+            result = self._run(execute_request({
+                "method": "GET", "url": "https://api.example.com/missing",
+                "headers": {},
+            }))
+
+        assert result["status"] == 404
+        assert result["error"] is None
+
+
+class TestFormatError:
+    def test_401_without_token(self):
+        decl = make_decl(base_url="https://api.example.com", auth=PasoAuth(type="bearer"))
+        result = {
+            "request": {"method": "GET", "url": "https://api.example.com/items"},
+            "status": 401, "status_text": "Unauthorized", "body": "", "error": None,
+        }
+        msg = format_error(result, decl, auth_token=None)
+        assert "Error 401" in msg
+        assert "USEPASO_AUTH_TOKEN is not set" in msg
+
+    def test_401_with_token(self):
+        decl = make_decl(base_url="https://api.example.com", auth=PasoAuth(type="bearer"))
+        result = {
+            "request": {"method": "GET", "url": "https://api.example.com/items"},
+            "status": 401, "status_text": "Unauthorized", "body": "", "error": None,
+        }
+        msg = format_error(result, decl, auth_token="some-token")
+        assert "rejected by the API" in msg
+        assert "Auth type: bearer" in msg
+
+    def test_403(self):
+        decl = make_decl(base_url="https://api.example.com")
+        result = {
+            "request": {"method": "GET", "url": "https://api.example.com/items"},
+            "status": 403, "body": "", "error": None,
+        }
+        msg = format_error(result, decl)
+        assert "Error 403" in msg
+        assert "Forbidden" in msg
+
+    def test_404_includes_url(self):
+        decl = make_decl(base_url="https://api.example.com")
+        result = {
+            "request": {"method": "GET", "url": "https://api.example.com/missing"},
+            "status": 404, "body": "", "error": None,
+        }
+        msg = format_error(result, decl)
+        assert "Error 404" in msg
+        assert "https://api.example.com/missing" in msg
+
+    def test_429(self):
+        decl = make_decl(base_url="https://api.example.com")
+        result = {
+            "request": {"method": "GET", "url": "https://api.example.com/items"},
+            "status": 429, "body": "", "error": None,
+        }
+        msg = format_error(result, decl)
+        assert "Rate limited" in msg
+
+    def test_5xx(self):
+        decl = make_decl(base_url="https://api.example.com")
+        result = {
+            "request": {"method": "GET", "url": "https://api.example.com/items"},
+            "status": 502, "body": "", "error": None,
+        }
+        msg = format_error(result, decl)
+        assert "Error 502" in msg
+        assert "Server error" in msg
+
+    def test_connection_error(self):
+        decl = make_decl(base_url="https://api.example.com")
+        result = {
+            "request": {"method": "GET", "url": "https://api.example.com/items"},
+            "body": "", "error": "ECONNREFUSED", "status": None,
+        }
+        msg = format_error(result, decl)
+        assert "Request failed: ECONNREFUSED" in msg
+
+
 class TestFormatError4xx:
     def test_4xx_includes_response_body(self):
-        from paso.executor import format_error
         decl = make_decl(base_url="https://api.example.com")
         result = {
             "request": {"method": "POST", "url": "https://api.example.com/items"},

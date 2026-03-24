@@ -122,6 +122,28 @@ describe('generateMcpServer', () => {
     expect(createTool).toBeDefined();
   });
 
+  it('handles single-element numeric enum without crashing', () => {
+    const decl: PasoDeclaration = {
+      version: '1.0',
+      service: { name: 'Test', description: 'Test', base_url: 'https://api.test.com' },
+      capabilities: [
+        {
+          name: 'set_mode',
+          description: 'Set mode',
+          method: 'POST',
+          path: '/mode',
+          permission: 'write',
+          inputs: {
+            mode: { type: 'enum', description: 'Mode', values: [42] },
+          },
+        },
+      ],
+    };
+    // Before fix, this threw: z.union requires at least 2 elements
+    const server = generateMcpServer(decl);
+    expect((server as any)._registeredTools['set_mode']).toBeDefined();
+  });
+
   it('preserves numeric enum values in tool schema', () => {
     const decl: PasoDeclaration = {
       version: '1.0',

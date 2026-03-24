@@ -51,23 +51,25 @@ def generate_mcp_server(decl: PasoDeclaration, on_log: LogCallback = None) -> Fa
 
         def _make_handler(cap_ref: PasoCapability):
             async def handler(**kwargs) -> str:
+                import os as _os
+                auth_token = _os.environ.get("USEPASO_AUTH_TOKEN")
                 # Apply defaults for missing optional inputs
                 if cap_ref.inputs:
                     for inp_name, inp_def in cap_ref.inputs.items():
                         if inp_name not in kwargs and inp_def.default is not None:
                             kwargs[inp_name] = inp_def.default
-                req = build_request(cap_ref, kwargs, decl)
+                req = build_request(cap_ref, kwargs, decl, auth_token=auth_token)
                 result = await execute_request(req)
 
                 if on_log:
                     on_log(cap_ref.name, result, decl)
 
                 if result.get('error'):
-                    return format_error(result, decl)
+                    return format_error(result, decl, auth_token=auth_token)
 
                 if result.get('status') and result['status'] >= 400:
                     body = result.get('body', '')
-                    msg = format_error(result, decl)
+                    msg = format_error(result, decl, auth_token=auth_token)
                     return f"{msg}\n\nResponse body:\n{body}" if body else msg
 
                 return result['body']

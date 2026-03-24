@@ -1,0 +1,30 @@
+description: Query parameters with spaces use %20 encoding (not +)
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+  capabilities:
+    - name: search_items
+      description: Search items
+      method: GET
+      path: /items
+      permission: read
+      inputs:
+        q:
+          type: string
+          description: Search query
+          in: query
+
+capability: search_items
+args:
+  q: "hello world"
+
+expected:
+  method: GET
+  url_contains:
+    base: https://api.example.com/items
+    params:
+      q: "hello world"

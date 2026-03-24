@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { buildRequest } from '../src/executor';
+import { describe, it, expect, vi } from 'vitest';
+import { buildRequest, executeRequest, formatError } from '../src/executor';
 import { PasoDeclaration } from '../src/types';
 
 function makeDecl(overrides: Partial<PasoDeclaration['service']> = {}): PasoDeclaration {
@@ -135,72 +135,51 @@ describe('buildRequest Content-Type handling', () => {
 
 describe('buildRequest auth handling', () => {
   it('sends Bearer token for oauth2 auth type', () => {
-    const original = process.env.USEPASO_AUTH_TOKEN;
-    process.env.USEPASO_AUTH_TOKEN = 'test-token';
-    try {
-      const decl = makeDecl({
-        base_url: 'https://api.example.com',
-        auth: { type: 'oauth2' },
-      });
-      const cap = {
-        name: 'get_item',
-        description: 'Get',
-        method: 'GET',
-        path: '/items',
-        permission: 'read' as const,
-      };
-      const req = buildRequest(cap, {}, decl);
-      expect(req.headers['Authorization']).toBe('Bearer test-token');
-    } finally {
-      if (original === undefined) delete process.env.USEPASO_AUTH_TOKEN;
-      else process.env.USEPASO_AUTH_TOKEN = original;
-    }
+    const decl = makeDecl({
+      base_url: 'https://api.example.com',
+      auth: { type: 'oauth2' },
+    });
+    const cap = {
+      name: 'get_item',
+      description: 'Get',
+      method: 'GET',
+      path: '/items',
+      permission: 'read' as const,
+    };
+    const req = buildRequest(cap, {}, decl, 'test-token');
+    expect(req.headers['Authorization']).toBe('Bearer test-token');
   });
 
   it('skips auth header when type is none even if token is set', () => {
-    const original = process.env.USEPASO_AUTH_TOKEN;
-    process.env.USEPASO_AUTH_TOKEN = 'test-token';
-    try {
-      const decl = makeDecl({
-        base_url: 'https://api.example.com',
-        auth: { type: 'none' },
-      });
-      const cap = {
-        name: 'get_item',
-        description: 'Get',
-        method: 'GET',
-        path: '/items',
-        permission: 'read' as const,
-      };
-      const req = buildRequest(cap, {}, decl);
-      expect(req.headers['Authorization']).toBeUndefined();
-    } finally {
-      if (original === undefined) delete process.env.USEPASO_AUTH_TOKEN;
-      else process.env.USEPASO_AUTH_TOKEN = original;
-    }
+    const decl = makeDecl({
+      base_url: 'https://api.example.com',
+      auth: { type: 'none' },
+    });
+    const cap = {
+      name: 'get_item',
+      description: 'Get',
+      method: 'GET',
+      path: '/items',
+      permission: 'read' as const,
+    };
+    const req = buildRequest(cap, {}, decl, 'test-token');
+    expect(req.headers['Authorization']).toBeUndefined();
   });
 
   it('uses Authorization header for api_key auth type', () => {
-    const original = process.env.USEPASO_AUTH_TOKEN;
-    process.env.USEPASO_AUTH_TOKEN = 'sk-test-key';
-    try {
-      const decl = makeDecl({
-        base_url: 'https://api.example.com',
-        auth: { type: 'api_key' },
-      });
-      const cap = {
-        name: 'get_item',
-        description: 'Get',
-        method: 'GET',
-        path: '/items',
-        permission: 'read' as const,
-      };
-      const req = buildRequest(cap, {}, decl);
-      expect(req.headers['Authorization']).toBe('sk-test-key');
-    } finally {
-      if (original === undefined) delete process.env.USEPASO_AUTH_TOKEN;
-      else process.env.USEPASO_AUTH_TOKEN = original;
-    }
+    const decl = makeDecl({
+      base_url: 'https://api.example.com',
+      auth: { type: 'api_key' },
+    });
+    const cap = {
+      name: 'get_item',
+      description: 'Get',
+      method: 'GET',
+      path: '/items',
+      permission: 'read' as const,
+    };
+    const req = buildRequest(cap, {}, decl, 'sk-test-key');
+    expect(req.headers['Authorization']).toBe('sk-test-key');
   });
 });
 
@@ -258,5 +237,193 @@ describe('header redaction logic', () => {
       const display = token && token.length >= 8 && v.includes(token) ? `${v.slice(0, 12)}...` : v;
       expect(display).toBe('application/json');
     }
+  });
+});
+
+describe('executeRequest', () => {
+  it('returns parsed JSON body on success', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      status: 200,
+      statusText: 'OK',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      text: () => Promise.resolve('{"id":1,"name":"test"}'),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await executeRequest({
+      method: 'GET',
+      url: 'https://api.example.com/items',
+      headers: { Accept: 'application/json' },
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toContain('"id": 1');
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
+    expect(result.error).toBeUndefined();
+    vi.unstubAllGlobals();
+  });
+
+  it('returns raw text for non-JSON response', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      status: 200,
+      statusText: 'OK',
+      headers: new Headers({}),
+      text: () => Promise.resolve('plain text response'),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await executeRequest({
+      method: 'GET',
+      url: 'https://api.example.com/health',
+      headers: {},
+    });
+
+    expect(result.body).toBe('plain text response');
+    vi.unstubAllGlobals();
+  });
+
+  it('returns error on network failure', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error('fetch failed'));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await executeRequest({
+      method: 'GET',
+      url: 'https://api.example.com/items',
+      headers: {},
+    });
+
+    expect(result.error).toBe('fetch failed');
+    expect(result.status).toBeUndefined();
+    vi.unstubAllGlobals();
+  });
+
+  it('throws on response exceeding size limit', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      status: 200,
+      statusText: 'OK',
+      headers: new Headers({ 'content-length': '20000000' }),
+      text: () => Promise.resolve(''),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await executeRequest({
+      method: 'GET',
+      url: 'https://api.example.com/large',
+      headers: {},
+    });
+
+    expect(result.error).toContain('Response too large');
+    vi.unstubAllGlobals();
+  });
+
+  it('returns correct status for 4xx/5xx', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      status: 404,
+      statusText: 'Not Found',
+      headers: new Headers({}),
+      text: () => Promise.resolve('{"error":"not found"}'),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await executeRequest({
+      method: 'GET',
+      url: 'https://api.example.com/missing',
+      headers: {},
+    });
+
+    expect(result.status).toBe(404);
+    expect(result.error).toBeUndefined();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('formatError', () => {
+  const decl = makeDecl({
+    base_url: 'https://api.example.com',
+    auth: { type: 'bearer' },
+  });
+
+  it('formats 401 without token', () => {
+    const result = {
+      request: { method: 'GET', url: 'https://api.example.com/items', headers: {} },
+      status: 401,
+      statusText: 'Unauthorized',
+      body: '',
+      durationMs: 50,
+    };
+    const msg = formatError(result, decl, undefined);
+    expect(msg).toContain('Error 401');
+    expect(msg).toContain('USEPASO_AUTH_TOKEN is not set');
+  });
+
+  it('formats 401 with token', () => {
+    const result = {
+      request: { method: 'GET', url: 'https://api.example.com/items', headers: {} },
+      status: 401,
+      statusText: 'Unauthorized',
+      body: '',
+      durationMs: 50,
+    };
+    const msg = formatError(result, decl, 'some-token');
+    expect(msg).toContain('rejected by the API');
+    expect(msg).toContain('Auth type: bearer');
+  });
+
+  it('formats 403', () => {
+    const result = {
+      request: { method: 'GET', url: 'https://api.example.com/items', headers: {} },
+      status: 403,
+      body: '',
+      durationMs: 50,
+    };
+    const msg = formatError(result, decl);
+    expect(msg).toContain('Error 403');
+    expect(msg).toContain('Forbidden');
+  });
+
+  it('formats 404 with URL', () => {
+    const result = {
+      request: { method: 'GET', url: 'https://api.example.com/missing', headers: {} },
+      status: 404,
+      body: '',
+      durationMs: 50,
+    };
+    const msg = formatError(result, decl);
+    expect(msg).toContain('Error 404');
+    expect(msg).toContain('https://api.example.com/missing');
+  });
+
+  it('formats 429', () => {
+    const result = {
+      request: { method: 'GET', url: 'https://api.example.com/items', headers: {} },
+      status: 429,
+      body: '',
+      durationMs: 50,
+    };
+    const msg = formatError(result, decl);
+    expect(msg).toContain('Rate limited');
+  });
+
+  it('formats 5xx', () => {
+    const result = {
+      request: { method: 'GET', url: 'https://api.example.com/items', headers: {} },
+      status: 502,
+      body: '',
+      durationMs: 50,
+    };
+    const msg = formatError(result, decl);
+    expect(msg).toContain('Error 502');
+    expect(msg).toContain('Server error');
+  });
+
+  it('formats connection error', () => {
+    const result = {
+      request: { method: 'GET', url: 'https://api.example.com/items', headers: {} },
+      body: '',
+      durationMs: 50,
+      error: 'ECONNREFUSED',
+    };
+    const msg = formatError(result, decl);
+    expect(msg).toContain('Request failed: ECONNREFUSED');
   });
 });

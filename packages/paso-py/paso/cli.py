@@ -292,7 +292,8 @@ def test_cmd(capability, file, param, dry_run):
             click.echo(err, err=True)
         sys.exit(1)
 
-    req = build_request(cap, args, decl)
+    auth_token = os.environ.get('USEPASO_AUTH_TOKEN')
+    req = build_request(cap, args, decl, auth_token=auth_token)
 
     if dry_run:
         click.echo("--- DRY RUN (no request will be made) ---")
@@ -316,14 +317,14 @@ def test_cmd(capability, file, param, dry_run):
     result = asyncio.run(execute_request(req))
 
     if result.get('error'):
-        click.echo(format_error(result, decl), err=True)
+        click.echo(format_error(result, decl, auth_token=auth_token), err=True)
         sys.exit(1)
 
     click.echo(f"← {result['status']} {result.get('status_text', '')} ({result['duration_ms']}ms)")
     click.echo("")
 
     if result.get('status', 0) >= 400:
-        click.echo(format_error(result, decl), err=True)
+        click.echo(format_error(result, decl, auth_token=auth_token), err=True)
         sys.exit(1)
 
     click.echo(result['body'])

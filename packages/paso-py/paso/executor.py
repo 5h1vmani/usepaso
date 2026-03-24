@@ -14,14 +14,17 @@ import httpx
 from paso.types import PasoCapability, PasoDeclaration
 
 
-def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration) -> dict:
+def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration,
+                   auth_token: Optional[str] = None) -> dict:
     """
     Build an HTTP request dict from a capability, arguments, and declaration.
+    Note: does not validate required inputs — callers (CLI, MCP) must validate before calling.
 
     Args:
         cap: PasoCapability with method, path, inputs, etc.
         args: Dictionary of argument values
         decl: PasoDeclaration with service config and auth details
+        auth_token: Auth token. Falls back to USEPASO_AUTH_TOKEN env var if not provided.
 
     Returns:
         Dict with keys: method, url, headers, body (optional)
@@ -75,7 +78,7 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration) -> dic
 
     # Append query parameters
     if query_params:
-        query_string = urlencode(query_params)
+        query_string = urlencode(query_params, quote_via=quote)
         url = f"{url}?{query_string}"
 
     # Build headers
@@ -85,25 +88,25 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration) -> dic
         headers["Content-Type"] = "application/json"
 
     # Add authentication header
-    auth_token = os.environ.get("USEPASO_AUTH_TOKEN")
+    token = auth_token if auth_token is not None else os.environ.get("USEPASO_AUTH_TOKEN")
     if decl.service.auth:
         if decl.service.auth.type == "none":
             pass  # Skip auth — notice is logged once at command startup, not per-request
-        elif auth_token:
+        elif token:
             auth = decl.service.auth
             header_name = auth.header or "Authorization"
             if auth.type in ("bearer", "oauth2"):
                 prefix = auth.prefix if auth.prefix is not None else "Bearer"
-                headers[header_name] = f"{prefix} {auth_token}" if prefix else auth_token
+                headers[header_name] = f"{prefix} {token}" if prefix else token
             elif auth.type == "api_key":
-                headers[header_name] = auth_token
+                headers[header_name] = token
             else:
                 import sys
                 print(
                     f'Warning: unknown auth.type "{auth.type}" — sending token as-is in {header_name}',
                     file=sys.stderr,
                 )
-                headers[header_name] = auth_token
+                headers[header_name] = token
 
     # Add header parameters (strip newlines to prevent header injection)
     for k, v in header_params.items():
@@ -180,18 +183,21 @@ async def execute_request(req: dict) -> dict:
     return result
 
 
-def format_error(result: dict, decl: PasoDeclaration) -> str:
+def format_error(result: dict, decl: PasoDeclaration,
+                 auth_token: Optional[str] = None) -> str:
     """
     Format a friendly error message from a request result.
+    Messages match the JS SDK output verbatim for parity.
 
     Args:
         result: Result dict from execute_request
         decl: PasoDeclaration with service config
+        auth_token: Auth token. Falls back to USEPASO_AUTH_TOKEN env var if not provided.
 
     Returns:
         Formatted error message string
     """
-    auth_token = os.environ.get("USEPASO_AUTH_TOKEN")
+    token = auth_token if auth_token is not None else os.environ.get("USEPASO_AUTH_TOKEN")
 
     # Handle connection errors
     if result["error"]:
@@ -199,26 +205,31 @@ def format_error(result: dict, decl: PasoDeclaration) -> str:
 
     status = result["status"]
 
+    if not status:
+        return "Unknown error"
+
     if status == 401:
-        hint = ""
-        if not auth_token:
-            hint = "\nHint: USEPASO_AUTH_TOKEN is not set. Please set it and try again."
+        auth_type = decl.service.auth.type if decl.service.auth else "unknown"
+        has_token = bool(token)
+        msg = "Error 401: Authentication failed."
+        if not has_token:
+            msg += "\n  \u2192 USEPASO_AUTH_TOKEN is not set. Set it with: export USEPASO_AUTH_TOKEN=your-token"
         else:
-            hint = "\nHint: Your USEPASO_AUTH_TOKEN may be invalid or expired."
-        return f"Error 401: Authentication failed.{hint}"
+            msg += "\n  \u2192 USEPASO_AUTH_TOKEN is set but was rejected by the API."
+            msg += f"\n  \u2192 Auth type: {auth_type}. Check that your token is valid and has the required scopes."
+        return msg
 
-    elif status == 403:
-        return "Error 403: Forbidden.\nHint: Your token may not have the required scopes for this endpoint."
+    if status == 403:
+        return "Error 403: Forbidden. Your token does not have permission for this action.\n  \u2192 Check the required scopes/permissions for this endpoint."
 
-    elif status == 404:
+    if status == 404:
         url = result["request"]["url"]
-        hint = f"\nHint: Check your base_url ({decl.service.base_url}) and path."
-        return f"Error 404: Not found.\nURL: {url}{hint}"
+        return f"Error 404: Not found.\n  \u2192 Check that base_url and path are correct in your usepaso.yaml.\n  \u2192 URL was: {url}"
 
-    elif status == 429:
-        return "Error 429: Rate limited.\nPlease wait before retrying."
+    if status == 429:
+        return "Error 429: Rate limited. The API is throttling requests.\n  \u2192 Wait and try again, or check your rate limit constraints."
 
-    elif status and status >= 500:
-        return f"Error {status}: Server error from the API."
+    if status >= 500:
+        return f"Error {status}: Server error from the API.\n  \u2192 This is likely a problem on the API side, not with usepaso."
 
-    return f"Error {status}: {result['status_text']}"
+    return f"Error {status} {result.get('status_text', '')}: {result.get('body', '')}"
