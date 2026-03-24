@@ -606,7 +606,7 @@ export function generateFromOpenApi(openapiSpec: object): OpenApiResult {
   };
 
   return {
-    yaml: stringify(declaration, { lineWidth: 0 }),
+    yaml: stringify(declaration, { lineWidth: 120 }),
     serviceName: service.name,
     authType: auth.type,
     totalOperations,

@@ -147,6 +147,7 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
+              "minProperties": 1,
               "properties": {
                 "max_per_hour": { "type": "integer" },
                 "max_per_request": { "type": "integer" },

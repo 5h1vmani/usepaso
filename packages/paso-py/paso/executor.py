@@ -79,10 +79,10 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration) -> dic
         url = f"{url}?{query_string}"
 
     # Build headers
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+    has_body = method in ("POST", "PUT", "PATCH")
+    headers = {"Accept": "application/json"}
+    if has_body:
+        headers["Content-Type"] = "application/json"
 
     # Add authentication header
     auth_token = os.environ.get("USEPASO_AUTH_TOKEN")
@@ -151,6 +151,11 @@ async def execute_request(req: dict) -> dict:
                 headers=req["headers"],
                 content=req.get("body"),
             )
+
+            max_size = 10 * 1024 * 1024  # 10MB
+            content_length = response.headers.get("content-length")
+            if content_length and int(content_length) > max_size:
+                raise ValueError(f"Response too large ({content_length} bytes, max {max_size})")
 
             result["status"] = response.status_code
             result["status_text"] = response.reason_phrase or ""

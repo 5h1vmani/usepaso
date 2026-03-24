@@ -64,9 +64,10 @@ export function buildRequest(
     url.searchParams.set(k, v);
   }
 
+  const hasBody = ['POST', 'PUT', 'PATCH'].includes(cap.method);
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
+    ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
   };
 
   if (decl.service.auth) {
@@ -136,7 +137,12 @@ export async function executeRequest(req: ExecutionRequest): Promise<ExecutionRe
       fetchOptions.body = req.body;
     }
 
+    const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB
     const response = await fetch(req.url, fetchOptions);
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_SIZE) {
+      throw new Error(`Response too large (${contentLength} bytes, max ${MAX_RESPONSE_SIZE})`);
+    }
     const text = await response.text();
     const durationMs = Date.now() - start;
 

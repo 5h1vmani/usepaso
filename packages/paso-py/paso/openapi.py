@@ -365,7 +365,7 @@ def generate_from_openapi(openapi_spec: dict) -> dict:
         default_flow_style=False,
         sort_keys=False,
         allow_unicode=True,
-        width=1000,
+        width=120,
     )
 
     return {

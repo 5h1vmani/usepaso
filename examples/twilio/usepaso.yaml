@@ -3,7 +3,8 @@ version: "1.0"
 service:
   name: Twilio
   description: Cloud communications platform for SMS, voice, and messaging
-  base_url: https://api.twilio.com/2010-04-01/Accounts/{account_sid}
+  # Replace YOUR_ACCOUNT_SID with your Twilio Account SID
+  base_url: https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT_SID
   version: "2010-04-01"
   auth:
     type: api_key
@@ -38,7 +39,7 @@ capabilities:
       date_created:
         type: string
     constraints:
-      - body_max_length: 1600
+      - max_value: 1600
         description: SMS body must be 1,600 characters or fewer
 
   - name: list_messages

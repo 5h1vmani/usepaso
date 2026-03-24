@@ -162,6 +162,26 @@ describe('validate', () => {
     expect(errors.some((e) => e.message.includes('unknown capability'))).toBe(true);
   });
 
+  it('fails when capability appears in multiple permission tiers', () => {
+    const decl = minimal();
+    decl.permissions = {
+      read: ['get_item'],
+      write: ['get_item'],
+    };
+    const errors = validate(decl);
+    expect(errors.some((e) => e.message.includes('multiple permission tiers'))).toBe(true);
+  });
+
+  it('warns on empty permission tier array', () => {
+    const decl = minimal();
+    decl.permissions = {
+      read: [],
+    };
+    const errors = validate(decl);
+    const warnings = errors.filter((e) => e.level === 'warning');
+    expect(warnings.some((e) => e.message.includes('empty array'))).toBe(true);
+  });
+
   it('warns on empty capabilities array', () => {
     const decl = minimal();
     decl.capabilities = [];

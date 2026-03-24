@@ -78,7 +78,14 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
 
     for (const tier of ['read', 'write', 'admin', 'forbidden'] as const) {
       const list = decl.permissions[tier];
-      if (list) {
+      if (list && list.length === 0) {
+        errors.push({
+          path: `permissions.${tier}`,
+          message: `empty array — remove it or add capability names`,
+          level: 'warning',
+        });
+      }
+      if (list && list.length > 0) {
         for (const name of list) {
           // forbidden can reference capabilities not declared (to explicitly block API endpoints)
           if (tier !== 'forbidden' && !capNames.has(name)) {
@@ -88,7 +95,10 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
             });
           }
           if (tier !== 'forbidden' && allReferenced.has(name)) {
-            // Check if it's in forbidden
+            errors.push({
+              path: `permissions.${tier}`,
+              message: `"${name}" appears in multiple permission tiers`,
+            });
           }
           allReferenced.add(name);
         }

@@ -103,6 +103,27 @@ class TestBuildRequestURL:
         assert req["body"] == '{"name": "test"}'
 
 
+class TestContentType:
+    def test_no_content_type_for_get(self):
+        decl = make_decl(base_url="https://api.example.com")
+        cap = PasoCapability(
+            name="get_items", description="Get", method="GET",
+            path="/items", permission="read",
+        )
+        req = build_request(cap, {}, decl)
+        assert "Content-Type" not in req["headers"]
+        assert req["headers"]["Accept"] == "application/json"
+
+    def test_content_type_for_post(self):
+        decl = make_decl(base_url="https://api.example.com")
+        cap = PasoCapability(
+            name="create_item", description="Create", method="POST",
+            path="/items", permission="write",
+        )
+        req = build_request(cap, {}, decl)
+        assert req["headers"]["Content-Type"] == "application/json"
+
+
 class TestBuildRequestAuth:
     def test_sends_bearer_token_for_oauth2(self, monkeypatch):
         monkeypatch.setenv("USEPASO_AUTH_TOKEN", "test-token")

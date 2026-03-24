@@ -70,13 +70,24 @@ def validate(decl: PasoDeclaration) -> list[ValidationError]:
 
         for tier in ['read', 'write', 'admin', 'forbidden']:
             tier_list = getattr(decl.permissions, tier, None)
-            if tier_list:
+            if tier_list is not None and len(tier_list) == 0:
+                errors.append(ValidationError(
+                    path=f'permissions.{tier}',
+                    message='empty array — remove it or add capability names',
+                    level='warning',
+                ))
+            if tier_list and len(tier_list) > 0:
                 for name in tier_list:
                     # forbidden can reference capabilities not declared
                     if tier != 'forbidden' and name not in cap_names:
                         errors.append(ValidationError(
                             path=f'permissions.{tier}',
                             message=f'references unknown capability "{name}"'
+                        ))
+                    if tier != 'forbidden' and name in all_referenced:
+                        errors.append(ValidationError(
+                            path=f'permissions.{tier}',
+                            message=f'"{name}" appears in multiple permission tiers'
                         ))
                     all_referenced.add(name)
 

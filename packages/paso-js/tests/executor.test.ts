@@ -104,6 +104,35 @@ describe('buildRequest URL construction', () => {
   });
 });
 
+describe('buildRequest Content-Type handling', () => {
+  it('does not send Content-Type for GET requests', () => {
+    const decl = makeDecl({ base_url: 'https://api.example.com' });
+    const cap = {
+      name: 'get_items',
+      description: 'Get',
+      method: 'GET',
+      path: '/items',
+      permission: 'read' as const,
+    };
+    const req = buildRequest(cap, {}, decl);
+    expect(req.headers['Content-Type']).toBeUndefined();
+    expect(req.headers['Accept']).toBe('application/json');
+  });
+
+  it('sends Content-Type for POST requests', () => {
+    const decl = makeDecl({ base_url: 'https://api.example.com' });
+    const cap = {
+      name: 'create_item',
+      description: 'Create',
+      method: 'POST',
+      path: '/items',
+      permission: 'write' as const,
+    };
+    const req = buildRequest(cap, {}, decl);
+    expect(req.headers['Content-Type']).toBe('application/json');
+  });
+});
+
 describe('buildRequest auth handling', () => {
   it('sends Bearer token for oauth2 auth type', () => {
     const original = process.env.USEPASO_AUTH_TOKEN;

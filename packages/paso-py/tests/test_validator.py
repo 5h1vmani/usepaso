@@ -390,6 +390,54 @@ class TestValidatePermissions:
         assert any('unknown capability' in e.message for e in errors)
 
 
+class TestMultiTierValidation:
+    def test_fails_when_capability_in_multiple_tiers(self):
+        cap = PasoCapability(
+            name="test_capability",
+            description="A capability",
+            method="GET",
+            path="/test",
+            permission="read"
+        )
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="https://api.example.com"
+            ),
+            capabilities=[cap],
+            permissions=PasoPermissions(
+                read=["test_capability"],
+                write=["test_capability"]
+            )
+        )
+        errors = validate(decl)
+        assert any('multiple permission tiers' in e.message for e in errors)
+
+    def test_warns_on_empty_permission_tier(self):
+        cap = PasoCapability(
+            name="test_capability",
+            description="A capability",
+            method="GET",
+            path="/test",
+            permission="read"
+        )
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="https://api.example.com"
+            ),
+            capabilities=[cap],
+            permissions=PasoPermissions(read=[])
+        )
+        errors = validate(decl)
+        warnings = [e for e in errors if e.level == 'warning']
+        assert any('empty array' in e.message for e in warnings)
+
+
 class TestValidateWarnings:
     def test_warns_on_empty_capabilities(self):
         decl = PasoDeclaration(
