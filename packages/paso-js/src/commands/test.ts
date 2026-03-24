@@ -47,6 +47,7 @@ export function registerTest(program: Command): void {
       [],
     )
     .option('--dry-run', 'Show the HTTP request without executing it')
+    .option('--timeout <ms>', 'Request timeout in milliseconds', '30000')
     .action(async (capabilityName, opts) => {
       try {
         const decl = loadAndValidate(resolve(opts.file));
@@ -127,7 +128,7 @@ export function registerTest(program: Command): void {
         if (req.body) console.log(`→ Body: ${req.body}`);
         console.log('');
 
-        const result = await executeRequest(req);
+        const result = await executeRequest(req, { timeout: parseInt(opts.timeout, 10) });
 
         if (result.error) {
           console.error(formatError(result, decl, authToken));

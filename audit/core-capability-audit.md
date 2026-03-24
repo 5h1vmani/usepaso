@@ -366,11 +366,20 @@ All critical and high issues have been addressed. Below is the resolution for ea
 
 | Issue | Resolution |
 |-------|-----------|
-| 4.1 Response size guard incomplete | **Accepted.** Content-length check catches the common case. Limitation documented in comments. |
-| 4.2 Python new HTTP client per request | **Deferred.** Backlog item for when `serve` perf matters. |
+| 4.1 Response size guard incomplete | **Fixed.** JS now reads via `ReadableStream` with byte counter, aborts at 10MB. PY checks `len(response.text)` after read. Both catch chunked responses. |
+| 4.2 Python new HTTP client per request | **Fixed.** MCP generator now creates a shared `httpx.AsyncClient` for connection pooling. `execute_request` accepts optional `client` param. CLI `test` command still creates per-request (1 request only). |
 | 4.3 Python MCP default handling | **Accepted.** FastMCP doesn't support schema defaults; PY applies them in handler. Documented difference. |
 | 4.4 `_is_valid_url` weakness | **Accepted.** Both SDKs are equally permissive. |
 | 4.5 Constraints advisory-only | **Accepted.** By design for v1.0. |
+
+### Low Issues — Status
+
+| Issue | Resolution |
+|-------|-----------|
+| 5.1 `process.stderr.write` in executor | **Accepted.** Only fires for unknown auth types (caught by validator). Minor side effect. |
+| 5.2 Python service field defaults to empty string | **Accepted.** Validator catches missing fields before executor runs. |
+| 5.3 No timeout configuration | **Fixed.** Both CLIs now accept `--timeout` flag (JS: `--timeout <ms>`, PY: `--timeout <seconds>`). `executeRequest` accepts timeout option. |
+| 5.4 `parseAndValidate` filters warnings | **Fixed.** Both SDKs now return `ParseResult` with `declaration` and `warnings` fields. Library consumers can inspect warnings. |
 
 ### Test Coverage After Fixes
 

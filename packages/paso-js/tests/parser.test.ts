@@ -82,8 +82,9 @@ capabilities:
     path: /items
     permission: read
 `;
-    const decl = parseAndValidate(yaml);
-    expect(decl.service.name).toBe('Test');
+    const result = parseAndValidate(yaml);
+    expect(result.declaration.service.name).toBe('Test');
+    expect(result.warnings).toBeDefined();
   });
 
   it('throws on invalid YAML', () => {

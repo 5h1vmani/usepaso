@@ -126,12 +126,17 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration,
     return req
 
 
-async def execute_request(req: dict) -> dict:
+async def execute_request(req: dict, client: Optional[httpx.AsyncClient] = None,
+                          timeout: float = 30.0) -> dict:
     """
     Execute an HTTP request asynchronously.
 
     Args:
         req: Request dict from build_request with method, url, headers, and optional body
+        client: Optional reusable httpx.AsyncClient for connection pooling (e.g. in serve mode).
+                If not provided, a new client is created per request.
+        timeout: Request timeout in seconds (default 30). Ignored if client is provided
+                 (client's own timeout applies).
 
     Returns:
         Dict with: request, status, status_text, body, duration_ms, error
@@ -146,31 +151,44 @@ async def execute_request(req: dict) -> dict:
         "error": None,
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.request(
-                method=req["method"],
-                url=req["url"],
-                headers=req["headers"],
-                content=req.get("body"),
+    async def _do_request(c: httpx.AsyncClient) -> None:
+        max_size = 10 * 1024 * 1024  # 10MB
+
+        # Check content-length first (fast path)
+        response = await c.request(
+            method=req["method"],
+            url=req["url"],
+            headers=req["headers"],
+            content=req.get("body"),
+        )
+
+        content_length = response.headers.get("content-length")
+        if content_length and int(content_length) > max_size:
+            raise ValueError(f"Response too large ({content_length} bytes, max {max_size})")
+
+        result["status"] = response.status_code
+        result["status_text"] = response.reason_phrase or ""
+
+        # Read body and check actual size (catches chunked responses too)
+        raw_text = response.text
+        if len(raw_text.encode("utf-8")) > max_size:
+            raise ValueError(
+                f"Response too large (>{max_size} bytes received, max {max_size})"
             )
 
-            # Guard against very large responses. Only checks content-length header;
-            # chunked/streaming responses without this header bypass the limit.
-            max_size = 10 * 1024 * 1024  # 10MB
-            content_length = response.headers.get("content-length")
-            if content_length and int(content_length) > max_size:
-                raise ValueError(f"Response too large ({content_length} bytes, max {max_size})")
+        # Try to pretty-print JSON responses
+        try:
+            body_json = json.loads(raw_text)
+            result["body"] = json.dumps(body_json, indent=2)
+        except (json.JSONDecodeError, ValueError):
+            result["body"] = raw_text
 
-            result["status"] = response.status_code
-            result["status_text"] = response.reason_phrase or ""
-
-            # Try to pretty-print JSON responses
-            try:
-                body_json = response.json()
-                result["body"] = json.dumps(body_json, indent=2)
-            except (json.JSONDecodeError, ValueError):
-                result["body"] = response.text
+    try:
+        if client:
+            await _do_request(client)
+        else:
+            async with httpx.AsyncClient(timeout=timeout) as new_client:
+                await _do_request(new_client)
 
     except httpx.RequestError as e:
         result["error"] = str(e)

@@ -18,36 +18,43 @@ export type {
 
 import { parseFile, parseString } from './parser';
 import { validate } from './validator';
-import { PasoDeclaration } from './types';
+import { PasoDeclaration, ValidationError } from './types';
+
+export interface ParseResult {
+  declaration: PasoDeclaration;
+  warnings: ValidationError[];
+}
 
 /**
  * Parse a YAML string and validate it. Throws if validation fails.
- * This is the safe entry point for library consumers.
+ * Returns both the declaration and any warnings.
  */
-export function parseAndValidate(content: string): PasoDeclaration {
+export function parseAndValidate(content: string): ParseResult {
   const decl = parseString(content);
   const errors = validate(decl);
   const realErrors = errors.filter((e) => e.level !== 'warning');
+  const warnings = errors.filter((e) => e.level === 'warning');
   if (realErrors.length > 0) {
     throw new Error(
       `Validation failed:\n${realErrors.map((e) => `  ${e.path}: ${e.message}`).join('\n')}`,
     );
   }
-  return decl;
+  return { declaration: decl, warnings };
 }
 
 /**
  * Parse a YAML file and validate it. Throws if validation fails.
- * This is the safe entry point for library consumers.
+ * Returns both the declaration and any warnings.
  */
-export function parseFileAndValidate(filePath: string): PasoDeclaration {
+export function parseFileAndValidate(filePath: string): ParseResult {
   const decl = parseFile(filePath);
   const errors = validate(decl);
   const realErrors = errors.filter((e) => e.level !== 'warning');
+  const warnings = errors.filter((e) => e.level === 'warning');
   if (realErrors.length > 0) {
     throw new Error(
       `Validation failed:\n${realErrors.map((e) => `  ${e.path}: ${e.message}`).join('\n')}`,
     );
   }
-  return decl;
+  return { declaration: decl, warnings };
 }

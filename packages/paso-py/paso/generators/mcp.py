@@ -1,6 +1,7 @@
 import asyncio
 from typing import Callable, Optional
 
+import httpx
 from mcp.server.fastmcp import FastMCP
 
 from paso.types import PasoDeclaration, PasoCapability
@@ -35,9 +36,12 @@ def _build_tool_description(cap: PasoCapability) -> str:
 def generate_mcp_server(decl: PasoDeclaration, on_log: LogCallback = None) -> FastMCP:
     """
     Generate a FastMCP server from a Paso declaration.
-    Uses the shared executor for HTTP requests.
+    Uses the shared executor for HTTP requests. A shared httpx client is used
+    for connection pooling across tool calls (avoids new TLS handshake per request).
     """
     mcp = FastMCP(decl.service.name)
+    # Shared client for connection pooling across MCP tool calls
+    shared_client = httpx.AsyncClient(timeout=30.0)
 
     forbidden_names = set()
     if decl.permissions and decl.permissions.forbidden:
@@ -59,7 +63,7 @@ def generate_mcp_server(decl: PasoDeclaration, on_log: LogCallback = None) -> Fa
                         if inp_name not in kwargs and inp_def.default is not None:
                             kwargs[inp_name] = inp_def.default
                 req = build_request(cap_ref, kwargs, decl, auth_token=auth_token)
-                result = await execute_request(req)
+                result = await execute_request(req, client=shared_client)
 
                 if on_log:
                     on_log(cap_ref.name, result, decl)

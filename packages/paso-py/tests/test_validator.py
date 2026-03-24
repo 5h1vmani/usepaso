@@ -473,8 +473,9 @@ capabilities:
     path: /items
     permission: read
 """
-        decl = parse_and_validate(yaml_content)
-        assert decl.service.name == "Test"
+        result = parse_and_validate(yaml_content)
+        assert result.declaration.service.name == "Test"
+        assert isinstance(result.warnings, list)
 
     def test_invalid_yaml_raises(self):
         from paso import parse_and_validate

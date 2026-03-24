@@ -125,29 +125,59 @@ export function buildRequest(
 /**
  * Execute an HTTP request and return the result.
  */
-export async function executeRequest(req: ExecutionRequest): Promise<ExecutionResult> {
+export async function executeRequest(
+  req: ExecutionRequest,
+  options?: { timeout?: number },
+): Promise<ExecutionResult> {
   const start = Date.now();
+  const timeout = options?.timeout ?? 30000;
 
   try {
     const fetchOptions: RequestInit = {
       method: req.method,
       headers: req.headers,
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(timeout),
     };
 
     if (req.body) {
       fetchOptions.body = req.body;
     }
 
-    // Guard against very large responses. Only checks content-length header;
-    // chunked/streaming responses without this header bypass the limit.
     const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB
     const response = await fetch(req.url, fetchOptions);
+
+    // Check content-length first (fast path)
     const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_SIZE) {
       throw new Error(`Response too large (${contentLength} bytes, max ${MAX_RESPONSE_SIZE})`);
     }
-    const text = await response.text();
+
+    // Read body with size guard — also catches chunked responses without content-length
+    let text: string;
+    if (response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      const chunks: string[] = [];
+      let totalBytes = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_RESPONSE_SIZE) {
+          reader.cancel();
+          throw new Error(
+            `Response too large (>${MAX_RESPONSE_SIZE} bytes streamed, max ${MAX_RESPONSE_SIZE})`,
+          );
+        }
+        chunks.push(decoder.decode(value, { stream: true }));
+      }
+      chunks.push(decoder.decode()); // flush
+      text = chunks.join('');
+    } else {
+      text = await response.text();
+    }
+
     const durationMs = Date.now() - start;
 
     let body: string;

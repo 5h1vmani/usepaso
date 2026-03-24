@@ -240,7 +240,8 @@ def _coerce_value(raw: str, declared_type: str, key: str):
 @click.option('--file', '-f', default='usepaso.yaml', help='Path to usepaso.yaml file')
 @click.option('--param', '-p', multiple=True, help='Parameters as key=value (repeatable)')
 @click.option('--dry-run', is_flag=True, help='Show the HTTP request without executing it')
-def test_cmd(capability, file, param, dry_run):
+@click.option('--timeout', default=30, type=float, help='Request timeout in seconds (default: 30)')
+def test_cmd(capability, file, param, dry_run, timeout):
     """Test a capability by making the actual HTTP request (or --dry-run to preview)."""
     from paso.executor import build_request, execute_request, format_error
 
@@ -314,7 +315,7 @@ def test_cmd(capability, file, param, dry_run):
         click.echo(f"→ Body: {req['body']}")
     click.echo("")
 
-    result = asyncio.run(execute_request(req))
+    result = asyncio.run(execute_request(req, timeout=timeout))
 
     if result.get('error'):
         click.echo(format_error(result, decl, auth_token=auth_token), err=True)
