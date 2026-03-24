@@ -8,9 +8,15 @@
 # the click group and registers itself.
 
 import asyncio
+import json as _json_mod
 import os
 import sys
 from importlib.metadata import version as pkg_version
+
+
+def _json_compact(obj) -> str:
+    """Serialize to compact JSON matching JS JSON.stringify() format."""
+    return _json_mod.dumps(obj, separators=(',', ':'))
 
 import click
 from pathlib import Path
@@ -97,7 +103,7 @@ Cursor (.cursor/mcp.json):
 
 
 @click.group()
-@click.version_option(version=__version__, prog_name='usepaso')
+@click.version_option(version=__version__, prog_name='usepaso', message='%(version)s')
 def main():
     """usepaso — Make your API agent-ready in minutes."""
     pass
@@ -159,15 +165,51 @@ def init(name, from_openapi):
     template = _load_template()
     content = template.replace('__SERVICE_NAME__', name)
     paso_file.write_text(content, encoding='utf-8')
-    click.echo(f"Created usepaso.yaml with service name '{name}'")
+    click.echo(f'Created usepaso.yaml for "{name}"')
+    click.echo('Edit the file to declare your API capabilities, then run: usepaso validate')
 
 
 # ---- validate ----
 
 @main.command('validate')
 @click.option('--file', '-f', default='usepaso.yaml', help='Path to usepaso.yaml file')
-def validate_cmd(file):
+@click.option('--json', 'as_json', is_flag=True, help='Output result as JSON')
+def validate_cmd(file, as_json):
     """Validate a usepaso.yaml file."""
+
+    if as_json:
+        try:
+            decl = parse_file(file)
+        except FileNotFoundError:
+            click.echo(_json_compact({
+                "valid": False, "service": None, "capabilities": 0,
+                "errors": [{"path": "", "message": f"File not found: {file}"}],
+                "warnings": [],
+            }))
+            sys.exit(1)
+        except Exception as e:
+            click.echo(_json_compact({
+                "valid": False, "service": None, "capabilities": 0,
+                "errors": [{"path": "", "message": str(e)}],
+                "warnings": [],
+            }))
+            sys.exit(1)
+
+        results = validate(decl)
+        errors = [e for e in results if e.level != 'warning']
+        warnings = [e for e in results if e.level == 'warning']
+        valid = len(errors) == 0
+        click.echo(_json_compact({
+            "valid": valid,
+            "service": decl.service.name if decl.service else None,
+            "capabilities": len(decl.capabilities) if decl.capabilities else 0,
+            "errors": [{"path": e.path, "message": e.message} for e in errors],
+            "warnings": [{"path": e.path, "message": e.message} for e in warnings],
+        }))
+        if not valid:
+            sys.exit(1)
+        return
+
     decl = _load_and_validate(file)
     cap_count = len(decl.capabilities) if decl.capabilities else 0
     click.echo(f"valid ({decl.service.name}, {cap_count} capabilities)")
@@ -177,8 +219,55 @@ def validate_cmd(file):
 
 @main.command('inspect')
 @click.option('--file', '-f', default='usepaso.yaml', help='Path to usepaso.yaml file')
-def inspect_cmd(file):
+@click.option('--json', 'as_json', is_flag=True, help='Output result as JSON')
+def inspect_cmd(file, as_json):
     """Show what MCP tools would be generated (dry run)."""
+
+    if as_json:
+        # JSON mode: handle errors as JSON, not stderr
+        try:
+            decl = parse_file(file)
+        except FileNotFoundError:
+            click.echo(_json_compact({"error": f"File not found: {file}"}))
+            sys.exit(1)
+        except Exception as e:
+            click.echo(_json_compact({"error": str(e)}))
+            sys.exit(1)
+
+        results = validate(decl)
+        errors = [e for e in results if e.level != 'warning']
+        if errors:
+            click.echo(_json_compact({
+                "error": "Validation failed",
+                "errors": [{"path": e.path, "message": e.message} for e in errors],
+            }))
+            sys.exit(1)
+
+        forbidden = set(decl.permissions.forbidden) if decl.permissions and decl.permissions.forbidden else set()
+        tools = [c for c in decl.capabilities if c.name not in forbidden]
+
+        click.echo(_json_compact({
+            "service": decl.service.name,
+            "auth": decl.service.auth.type if decl.service.auth else "none",
+            "tools": [
+                {
+                    "name": t.name,
+                    "permission": t.permission,
+                    "method": t.method,
+                    "path": t.path,
+                    "description": t.description,
+                    "consent_required": t.consent_required or False,
+                    "params": [
+                        f"{k}{'*' if v.required else ''}: {v.type}"
+                        for k, v in (t.inputs or {}).items()
+                    ],
+                }
+                for t in tools
+            ],
+            "forbidden": list(decl.permissions.forbidden) if decl.permissions and decl.permissions.forbidden else [],
+        }))
+        return
+
     decl = _load_and_validate(file)
 
     forbidden = set(decl.permissions.forbidden) if decl.permissions and decl.permissions.forbidden else set()
@@ -247,8 +336,11 @@ def test_cmd(capability, file, param, dry_run, timeout):
 
     decl = _load_and_validate(file)
 
-    # Auth notice (once, not per-request)
-    if decl.service.auth and decl.service.auth.type == 'none' and os.environ.get('USEPASO_AUTH_TOKEN'):
+    # Auth notices (once, not per-request)
+    auth_token = os.environ.get('USEPASO_AUTH_TOKEN')
+    if auth_token is not None and auth_token == '':
+        click.echo('Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.', err=True)
+    if decl.service.auth and decl.service.auth.type == 'none' and auth_token:
         click.echo('Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN', err=True)
 
     cap = None
@@ -281,6 +373,10 @@ def test_cmd(capability, file, param, dry_run, timeout):
                 param_errors.append(str(e))
         else:
             args[key] = raw
+            click.echo(
+                f'Warning: unknown parameter "{key}" — not declared in inputs for {capability}',
+                err=True,
+            )
 
     # Check required params
     if cap.inputs:
@@ -293,7 +389,6 @@ def test_cmd(capability, file, param, dry_run, timeout):
             click.echo(err, err=True)
         sys.exit(1)
 
-    auth_token = os.environ.get('USEPASO_AUTH_TOKEN')
     req = build_request(cap, args, decl, auth_token=auth_token)
 
     if dry_run:
@@ -344,10 +439,13 @@ def serve(file, verbose, watch):
     cap_count = len(decl.capabilities) if decl.capabilities else 0
 
     # Auth notices (logged once at startup, not per-request)
+    auth_token = os.environ.get('USEPASO_AUTH_TOKEN')
+    if auth_token is not None and auth_token == '':
+        click.echo('Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.', err=True)
     if decl.service.auth:
-        if decl.service.auth.type == 'none' and os.environ.get('USEPASO_AUTH_TOKEN'):
+        if decl.service.auth.type == 'none' and auth_token:
             click.echo('Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN', err=True)
-        elif decl.service.auth.type != 'none' and not os.environ.get('USEPASO_AUTH_TOKEN'):
+        elif decl.service.auth.type != 'none' and not auth_token:
             click.echo(
                 f'Warning: auth type "{decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.',
                 err=True
