@@ -79,6 +79,21 @@ class TestValidateService:
         errors = validate(decl)
         assert any(e.path == 'service.base_url' and 'valid URL' in e.message for e in errors)
 
+    def test_warns_on_http_base_url(self):
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="http://api.example.com"
+            ),
+            capabilities=[]
+        )
+        errors = validate(decl)
+        http_warning = [e for e in errors if e.path == 'service.base_url' and e.level == 'warning']
+        assert len(http_warning) == 1
+        assert 'https://' in http_warning[0].message
+
 
 class TestValidateCapability:
     def test_fails_on_non_snake_case_capability_name(self):

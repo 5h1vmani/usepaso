@@ -151,4 +151,65 @@ class TestBuildToolDescription:
             method="GET", path="/items/{id}", permission="read",
         )
         desc = _build_tool_description(cap)
-        assert desc == "Get an item"
+        assert desc == "Get an item\n\n[Permission: read] [GET /items/{id}]"
+
+    def test_includes_permission_and_method_in_description(self):
+        cap = PasoCapability(
+            name="update_item", description="Update an item",
+            method="PUT", path="/items/{id}", permission="write",
+        )
+        desc = _build_tool_description(cap)
+        assert "[Permission: write]" in desc
+        assert "[PUT /items/{id}]" in desc
+
+    def test_includes_requires_field_constraint(self):
+        cap = PasoCapability(
+            name="transfer", description="Transfer funds",
+            method="POST", path="/transfers", permission="admin",
+            constraints=[PasoConstraint(requires_field="account_id")],
+        )
+        desc = _build_tool_description(cap)
+        assert "Required: account_id must be provided" in desc
+
+
+# --- Shared fixture tests for cross-SDK tool-description parity ---
+import yaml
+
+TOOL_DESC_FIXTURES = Path(__file__).parent / '..' / '..' / '..' / 'test-fixtures' / 'tool-description'
+
+
+def _load_tool_desc_fixtures():
+    fixtures_dir = TOOL_DESC_FIXTURES.resolve()
+    if not fixtures_dir.exists():
+        return []
+    return sorted(fixtures_dir.glob('*.yaml'))
+
+
+@pytest.mark.parametrize(
+    'fixture_path',
+    _load_tool_desc_fixtures(),
+    ids=lambda p: p.stem,
+)
+def test_tool_description_fixture(fixture_path):
+    """Shared cross-SDK parity test for tool descriptions."""
+    fixture = yaml.safe_load(fixture_path.read_text())
+    cap_data = fixture['capability']
+
+    cap = PasoCapability(
+        name=cap_data['name'],
+        description=cap_data['description'],
+        method=cap_data['method'],
+        path=cap_data['path'],
+        permission=cap_data['permission'],
+        consent_required=cap_data.get('consent_required'),
+        constraints=[
+            PasoConstraint.from_dict(c) for c in cap_data.get('constraints', [])
+        ] or None,
+    )
+
+    desc = _build_tool_description(cap)
+
+    for substr in fixture.get('expected_contains', []):
+        assert substr in desc, f'Expected "{substr}" in description:\n{desc}'
+    for substr in fixture.get('expected_not_contains', []):
+        assert substr not in desc, f'Did not expect "{substr}" in description:\n{desc}'

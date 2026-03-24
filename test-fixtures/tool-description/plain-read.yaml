@@ -1,0 +1,16 @@
+description: Plain read capability includes permission and method in description
+
+capability:
+  name: list_items
+  description: List all items
+  method: GET
+  path: /items
+  permission: read
+
+expected_contains:
+  - "List all items"
+  - "[Permission: read]"
+  - "[GET /items]"
+expected_not_contains:
+  - "REQUIRES USER CONSENT"
+  - "Constraints:"

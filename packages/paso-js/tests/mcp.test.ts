@@ -207,4 +207,66 @@ describe('generateMcpServer', () => {
     expect(mcpOutput).toContain('name is required');
     expect(mcpOutput).toContain('Response body:');
   });
+
+  it('includes permission tier and method in tool description', () => {
+    const server = generateMcpServer(minimal());
+    const tool = (server as any)._registeredTools['create_item'];
+    expect(tool).toBeDefined();
+    expect(tool.description).toContain('[Permission: write]');
+    expect(tool.description).toContain('[POST /items]');
+  });
+
+  it('includes requires_field constraint in tool description', () => {
+    const decl: PasoDeclaration = {
+      version: '1.0',
+      service: { name: 'Test', description: 'Test', base_url: 'https://api.test.com' },
+      capabilities: [
+        {
+          name: 'transfer',
+          description: 'Transfer funds',
+          method: 'POST',
+          path: '/transfers',
+          permission: 'admin',
+          constraints: [{ requires_field: 'account_id' }],
+        },
+      ],
+    };
+    const server = generateMcpServer(decl);
+    const tool = (server as any)._registeredTools['transfer'];
+    expect(tool.description).toContain('Required: account_id must be provided');
+  });
+});
+
+// --- Shared fixture tests for cross-SDK tool-description parity ---
+import { readdirSync, readFileSync } from 'fs';
+import YAML from 'yaml';
+
+const TOOL_DESC_FIXTURES = join(__dirname, '../../../test-fixtures/tool-description');
+
+describe('shared tool-description fixtures (cross-SDK parity)', () => {
+  const files = readdirSync(TOOL_DESC_FIXTURES).filter((f) => f.endsWith('.yaml'));
+  for (const file of files) {
+    it(file.replace('.yaml', ''), () => {
+      const content = readFileSync(join(TOOL_DESC_FIXTURES, file), 'utf-8');
+      const fixture = YAML.parse(content);
+      const cap = fixture.capability;
+
+      const decl: PasoDeclaration = {
+        version: '1.0',
+        service: { name: 'Test', description: 'Test', base_url: 'https://api.test.com' },
+        capabilities: [cap],
+      };
+
+      const server = generateMcpServer(decl);
+      const tool = (server as any)._registeredTools[cap.name];
+      expect(tool).toBeDefined();
+
+      for (const substr of fixture.expected_contains || []) {
+        expect(tool.description).toContain(substr);
+      }
+      for (const substr of fixture.expected_not_contains || []) {
+        expect(tool.description).not.toContain(substr);
+      }
+    });
+  }
 });

@@ -58,6 +58,15 @@ describe('validate', () => {
     expect(errors.some((e) => e.path === 'service.base_url')).toBe(true);
   });
 
+  it('warns on http:// base_url', () => {
+    const decl = minimal();
+    decl.service.base_url = 'http://api.example.com';
+    const errors = validate(decl);
+    const httpWarning = errors.find((e) => e.path === 'service.base_url' && e.level === 'warning');
+    expect(httpWarning).toBeDefined();
+    expect(httpWarning!.message).toContain('https://');
+  });
+
   it('fails on non-snake_case capability name', () => {
     const decl = minimal();
     decl.capabilities[0].name = 'GetItem';

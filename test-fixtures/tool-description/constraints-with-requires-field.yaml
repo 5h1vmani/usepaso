@@ -1,0 +1,22 @@
+description: Constraints including requires_field are surfaced in description
+
+capability:
+  name: transfer_funds
+  description: Transfer money between accounts
+  method: POST
+  path: /transfers
+  permission: write
+  consent_required: true
+  constraints:
+    - max_value: 10000
+      description: Maximum transfer amount
+    - requires_field: destination_account
+
+expected_contains:
+  - "[Permission: write]"
+  - "[POST /transfers]"
+  - "REQUIRES USER CONSENT"
+  - "Constraints:"
+  - "Max value: 10000"
+  - "Maximum transfer amount"
+  - "Required: destination_account must be provided"

@@ -1,0 +1,15 @@
+description: Write capability with consent includes all annotations
+
+capability:
+  name: delete_item
+  description: Delete an item permanently
+  method: DELETE
+  path: /items/{id}
+  permission: admin
+  consent_required: true
+
+expected_contains:
+  - "Delete an item permanently"
+  - "[Permission: admin]"
+  - "[DELETE /items/{id}]"
+  - "REQUIRES USER CONSENT"
