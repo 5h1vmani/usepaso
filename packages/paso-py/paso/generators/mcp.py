@@ -15,6 +15,8 @@ def _build_tool_description(cap: PasoCapability) -> str:
     """Build a rich tool description matching the JS SDK format."""
     desc = cap.description
 
+    desc += f'\n\n[Permission: {cap.permission}] [{cap.method} {cap.path}]'
+
     if cap.consent_required:
         desc += '\n\n⚠️ REQUIRES USER CONSENT: You must confirm this action with the user before executing.'
 
@@ -29,6 +31,8 @@ def _build_tool_description(cap: PasoCapability) -> str:
                 desc += f'\n- Max value: {c.max_value}'
             if c.max_per_request:
                 desc += f'\n- Max per request: {c.max_per_request}'
+            if c.requires_field:
+                desc += f'\n- Required: {c.requires_field} must be provided'
 
     return desc
 

@@ -8,7 +8,7 @@ from typing import Optional
 import yaml
 
 MAX_CAPABILITIES = 20
-HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head']
+HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete']
 
 
 def to_snake_case(s: str) -> str:

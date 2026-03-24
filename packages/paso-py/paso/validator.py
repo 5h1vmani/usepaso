@@ -38,6 +38,12 @@ def validate(decl: PasoDeclaration) -> list[ValidationError]:
         else:
             if not _is_valid_url(decl.service.base_url):
                 errors.append(ValidationError(path='service.base_url', message='service.base_url must be a valid URL'))
+            elif decl.service.base_url.startswith('http://'):
+                errors.append(ValidationError(
+                    path='service.base_url',
+                    message='base_url uses http:// — consider https:// to protect auth tokens in transit',
+                    level='warning',
+                ))
 
         if decl.service.auth:
             if decl.service.auth.type not in VALID_AUTH_TYPES:

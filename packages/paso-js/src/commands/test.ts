@@ -47,14 +47,20 @@ export function registerTest(program: Command): void {
       [],
     )
     .option('--dry-run', 'Show the HTTP request without executing it')
-    .option('--timeout <ms>', 'Request timeout in milliseconds', '30000')
+    .option('--timeout <seconds>', 'Request timeout in seconds', '30')
     .action(async (capabilityName, opts) => {
       try {
         const decl = loadAndValidate(resolve(opts.file));
 
-        // Auth notice (once, not per-request)
-        if (decl.service.auth?.type === 'none' && process.env.USEPASO_AUTH_TOKEN) {
+        // Auth notices (once, not per-request)
+        const authToken = process.env.USEPASO_AUTH_TOKEN;
+        if (decl.service.auth?.type === 'none' && authToken) {
           console.error(`Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN`);
+        }
+        if (authToken !== undefined && authToken === '') {
+          console.error(
+            `Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.`,
+          );
         }
 
         const cap = decl.capabilities.find((c) => c.name === capabilityName);
@@ -84,8 +90,11 @@ export function registerTest(program: Command): void {
               paramErrors.push(e instanceof Error ? e.message : String(e));
             }
           } else {
-            // Unknown param — keep as string
+            // Unknown param — keep as string but warn
             args[key] = raw;
+            console.error(
+              `Warning: unknown parameter "${key}" — not declared in inputs for ${capabilityName}`,
+            );
           }
         }
 
@@ -103,7 +112,6 @@ export function registerTest(program: Command): void {
           process.exit(1);
         }
 
-        const authToken = process.env.USEPASO_AUTH_TOKEN;
         const req = buildRequest(cap, args, decl, authToken);
 
         if (opts.dryRun) {
@@ -128,7 +136,8 @@ export function registerTest(program: Command): void {
         if (req.body) console.log(`→ Body: ${req.body}`);
         console.log('');
 
-        const result = await executeRequest(req, { timeout: parseInt(opts.timeout, 10) });
+        const timeoutMs = Math.round(parseFloat(opts.timeout) * 1000);
+        const result = await executeRequest(req, { timeout: timeoutMs });
 
         if (result.error) {
           console.error(formatError(result, decl, authToken));

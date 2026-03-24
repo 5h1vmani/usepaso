@@ -18,10 +18,16 @@ export function registerServe(program: Command): void {
         const decl = loadAndValidate(filePath);
 
         // Auth notices (logged once at startup, not per-request)
+        const authToken = process.env.USEPASO_AUTH_TOKEN;
+        if (authToken !== undefined && authToken === '') {
+          console.error(
+            `Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.`,
+          );
+        }
         if (decl.service.auth) {
-          if (decl.service.auth.type === 'none' && process.env.USEPASO_AUTH_TOKEN) {
+          if (decl.service.auth.type === 'none' && authToken) {
             console.error(`Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN`);
-          } else if (decl.service.auth.type !== 'none' && !process.env.USEPASO_AUTH_TOKEN) {
+          } else if (decl.service.auth.type !== 'none' && !authToken) {
             console.error(
               `Warning: auth type "${decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.`,
             );

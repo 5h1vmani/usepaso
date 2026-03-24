@@ -133,6 +133,8 @@ function inputToZod(input: PasoInput): z.ZodTypeAny {
 function buildToolDescription(cap: PasoCapability, _decl: PasoDeclaration): string {
   let desc = cap.description;
 
+  desc += `\n\n[Permission: ${cap.permission}] [${cap.method} ${cap.path}]`;
+
   if (cap.consent_required) {
     desc +=
       '\n\n⚠️ REQUIRES USER CONSENT: You must confirm this action with the user before executing.';
@@ -145,6 +147,7 @@ function buildToolDescription(cap: PasoCapability, _decl: PasoDeclaration): stri
       if (c.max_per_hour) desc += `\n- Rate limit: ${c.max_per_hour}/hour`;
       if (c.max_value) desc += `\n- Max value: ${c.max_value}`;
       if (c.max_per_request) desc += `\n- Max per request: ${c.max_per_request}`;
+      if (c.requires_field) desc += `\n- Required: ${c.requires_field} must be provided`;
     }
   }
 

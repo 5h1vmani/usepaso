@@ -89,6 +89,6 @@ export function registerInit(program: Command): void {
       const template = loadTemplate().replaceAll('__SERVICE_NAME__', name);
       writeFileSync(outPath, template, 'utf-8');
       console.log(`Created usepaso.yaml for "${name}"`);
-      console.log('Edit the file to declare your API capabilities, then run: usepaso serve');
+      console.log('Edit the file to declare your API capabilities, then run: usepaso validate');
     });
 }

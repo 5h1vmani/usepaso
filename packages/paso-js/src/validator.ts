@@ -36,7 +36,14 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
       errors.push({ path: 'service.base_url', message: 'service.base_url is required' });
     } else {
       try {
-        new URL(decl.service.base_url);
+        const parsed = new URL(decl.service.base_url);
+        if (parsed.protocol === 'http:') {
+          errors.push({
+            path: 'service.base_url',
+            message: 'base_url uses http:// — consider https:// to protect auth tokens in transit',
+            level: 'warning',
+          });
+        }
       } catch {
         errors.push({ path: 'service.base_url', message: 'service.base_url must be a valid URL' });
       }

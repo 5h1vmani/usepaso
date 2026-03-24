@@ -101,7 +101,7 @@ interface OpenApiSpec {
 // Constants
 // ---------------------------------------------------------------------------
 
-const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head'] as const;
+const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
 const MAX_CAPABILITIES = 20;
@@ -279,7 +279,6 @@ function detectAuth(spec: OpenApiSpec): PasoAuth {
 function derivePermission(method: HttpMethod): 'read' | 'write' | 'admin' {
   switch (method) {
     case 'get':
-    case 'head':
       return 'read';
     case 'delete':
       return 'admin';
