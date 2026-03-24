@@ -20,7 +20,8 @@ class TestValidateMinimal:
             capabilities=[]
         )
         errors = validate(decl)
-        assert errors == []
+        real_errors = [e for e in errors if e.level != 'warning']
+        assert real_errors == []
 
 
 class TestValidateVersion:
@@ -246,6 +247,100 @@ class TestValidatePath:
         assert any('path parameter' in e.message and 'not found' in e.message for e in errors)
 
 
+class TestValidatePathParams:
+    def test_fails_on_path_parameter_without_in_path(self):
+        cap = PasoCapability(
+            name="test_capability",
+            description="A capability",
+            method="GET",
+            path="/test/{id}",
+            permission="read",
+            inputs={
+                "id": PasoInput(type="string", description="The ID", in_="query"),
+            }
+        )
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="https://api.example.com"
+            ),
+            capabilities=[cap]
+        )
+        errors = validate(decl)
+        assert any('must have in: path' in e.message for e in errors)
+
+    def test_fails_on_path_parameter_with_in_omitted(self):
+        cap = PasoCapability(
+            name="test_capability",
+            description="A capability",
+            method="GET",
+            path="/test/{id}",
+            permission="read",
+            inputs={
+                "id": PasoInput(type="string", description="The ID"),
+            }
+        )
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="https://api.example.com"
+            ),
+            capabilities=[cap]
+        )
+        errors = validate(decl)
+        assert any('must have in: path' in e.message for e in errors)
+
+    def test_fails_on_body_param_for_get(self):
+        cap = PasoCapability(
+            name="test_capability",
+            description="A capability",
+            method="GET",
+            path="/test",
+            permission="read",
+            inputs={
+                "filter": PasoInput(type="string", description="Filter", in_="body"),
+            }
+        )
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="https://api.example.com"
+            ),
+            capabilities=[cap]
+        )
+        errors = validate(decl)
+        assert any('body parameters are not supported' in e.message for e in errors)
+
+    def test_fails_on_body_param_for_delete(self):
+        cap = PasoCapability(
+            name="test_capability",
+            description="A capability",
+            method="DELETE",
+            path="/test",
+            permission="read",
+            inputs={
+                "id": PasoInput(type="string", description="ID", in_="body"),
+            }
+        )
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="https://api.example.com"
+            ),
+            capabilities=[cap]
+        )
+        errors = validate(decl)
+        assert any('body parameters are not supported' in e.message for e in errors)
+
+
 class TestValidatePermissions:
     def test_fails_when_forbidden_overlaps_with_tier(self):
         cap = PasoCapability(
@@ -293,6 +388,59 @@ class TestValidatePermissions:
         )
         errors = validate(decl)
         assert any('unknown capability' in e.message for e in errors)
+
+
+class TestValidateWarnings:
+    def test_warns_on_empty_capabilities(self):
+        decl = PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="test_service",
+                description="A test service",
+                base_url="https://api.example.com"
+            ),
+            capabilities=[]
+        )
+        errors = validate(decl)
+        warnings = [e for e in errors if e.level == 'warning']
+        real_errors = [e for e in errors if e.level != 'warning']
+        assert len(warnings) == 1
+        assert 'empty' in warnings[0].message
+        assert len(real_errors) == 0
+
+
+class TestParseAndValidate:
+    def test_valid_yaml_returns_declaration(self):
+        from paso import parse_and_validate
+        yaml_content = """
+version: "1.0"
+service:
+  name: Test
+  description: A test
+  base_url: https://api.example.com
+capabilities:
+  - name: get_item
+    description: Get item
+    method: GET
+    path: /items
+    permission: read
+"""
+        decl = parse_and_validate(yaml_content)
+        assert decl.service.name == "Test"
+
+    def test_invalid_yaml_raises(self):
+        from paso import parse_and_validate
+        import pytest
+        yaml_content = """
+version: "2.0"
+service:
+  name: Test
+  description: A test
+  base_url: https://api.example.com
+capabilities: []
+"""
+        with pytest.raises(ValueError, match="Validation failed"):
+            parse_and_validate(yaml_content)
 
 
 class TestValidateExamples:

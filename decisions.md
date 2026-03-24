@@ -4,6 +4,28 @@ Non-obvious choices and the reasoning behind them. Newest first.
 
 ---
 
+### 2026-03-24: Engineering rules added to AGENTS.md
+
+**Decision:** Added a set of engineering rules to AGENTS.md covering fix discipline, code patterns, and dual-SDK parity. These are mechanical rules, not aspirations.
+
+**Why:** A full codebase audit found 47 issues, including 6 critical bugs. We fixed all 6, wrote tests, and declared victory. A self-review then found we'd missed: 2 shared fixtures for the exact bugs we fixed, a per-request stderr notice that spams MCP servers, zero tests for a coercion function we wrote, a UX problem where CLI users see errors one at a time, and no user warning for circular $ref fallbacks.
+
+The root cause was consistent across all gaps:
+
+1. **We tested that new code works, not that old bugs can't recur.** We wrote `auth-bearer.yaml` but forgot `auth-oauth2.yaml` — the fixture for the exact bug we fixed. The principle: the first test for a bug fix must reproduce the bug.
+
+2. **We never used the CLI as a user would.** A 30-second `usepaso serve` would have revealed the notice printing on every request. Unit tests exercise functions in isolation and miss integration-level UX problems.
+
+3. **We wrote code and tests in the same pass.** When you write both together, you test what you wrote, not what should be true. The coercion function was written to reject `Infinity` but we never tested `Infinity` — we tested the happy path of valid integers.
+
+4. **Side effects were buried inside pure-looking functions.** `buildRequest` read env vars and wrote to stderr. This made it untestable for some behaviors and caused the per-request notice spam. Functions should be pure; side effects belong at the edges.
+
+5. **`process.exit` killed testability.** Every function that calls `process.exit` is untestable. We had to refactor `coerceValue` from exit-on-error to throw-on-error before we could test it. The convention should be "throw, don't exit" from day one.
+
+These rules are now in AGENTS.md so both human and AI contributors follow them mechanically.
+
+---
+
 ### 2026-03-24: AGENTS.md instead of CLAUDE.md
 
 **Decision:** Use a generic `AGENTS.md` file for AI coding agent instructions instead of agent-specific files like `CLAUDE.md`, `.cursorrules`, or `GEMINI.md`.

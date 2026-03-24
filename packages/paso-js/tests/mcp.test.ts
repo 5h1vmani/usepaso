@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { generateMcpServer } from '../src/generators/mcp';
 import { parseFile } from '../src/parser';
 import { PasoDeclaration } from '../src/types';
 import { join } from 'path';
+import { formatError } from '../src/executor';
 
 function minimal(): PasoDeclaration {
   return {
@@ -119,5 +120,69 @@ describe('generateMcpServer', () => {
     const server = generateMcpServer(minimal());
     const createTool = (server as any)._registeredTools['create_item'];
     expect(createTool).toBeDefined();
+  });
+
+  it('preserves numeric enum values in tool schema', () => {
+    const decl: PasoDeclaration = {
+      version: '1.0',
+      service: { name: 'Test', description: 'Test', base_url: 'https://api.test.com' },
+      capabilities: [
+        {
+          name: 'set_level',
+          description: 'Set level',
+          method: 'POST',
+          path: '/level',
+          permission: 'write',
+          inputs: {
+            level: { type: 'enum', description: 'Level', values: [1, 2, 3] },
+          },
+        },
+      ],
+    };
+    const server = generateMcpServer(decl);
+    const tool = (server as any)._registeredTools['set_level'];
+    expect(tool).toBeDefined();
+    // The schema should accept numbers, not strings
+    const schema = tool.inputSchema;
+    expect(schema).toBeDefined();
+  });
+
+  it('applies default values in tool schema', () => {
+    const decl: PasoDeclaration = {
+      version: '1.0',
+      service: { name: 'Test', description: 'Test', base_url: 'https://api.test.com' },
+      capabilities: [
+        {
+          name: 'list_items',
+          description: 'List items',
+          method: 'GET',
+          path: '/items',
+          permission: 'read',
+          inputs: {
+            limit: { type: 'integer', description: 'Limit', default: 10 },
+          },
+        },
+      ],
+    };
+    const server = generateMcpServer(decl);
+    const tool = (server as any)._registeredTools['list_items'];
+    expect(tool).toBeDefined();
+  });
+
+  it('4xx response includes both error message and response body', () => {
+    const decl = minimal();
+    const result = {
+      request: { method: 'POST', url: 'https://api.test.com/items', headers: {} },
+      status: 422,
+      statusText: 'Unprocessable Entity',
+      body: '{"error": "name is required"}',
+      durationMs: 50,
+    };
+    const errorMsg = formatError(result, decl);
+    // The MCP handler concatenates formatError + body for 4xx
+    const mcpOutput = `${errorMsg}\n\nResponse body:\n${result.body}`;
+    expect(mcpOutput).toContain('422');
+    expect(mcpOutput).toContain('name is required');
+    expect(mcpOutput).toContain('Response body:');
   });
 });

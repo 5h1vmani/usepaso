@@ -1,0 +1,34 @@
+description: POST request puts body params in JSON body
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+  capabilities:
+    - name: create_item
+      description: Create an item
+      method: POST
+      path: /items
+      permission: write
+      inputs:
+        name:
+          type: string
+          required: true
+          description: Item name
+        count:
+          type: integer
+          description: Item count
+
+capability: create_item
+args:
+  name: "widget"
+  count: 5
+
+expected:
+  method: POST
+  url: https://api.example.com/items
+  body_contains:
+    name: "widget"
+    count: 5

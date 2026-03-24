@@ -30,9 +30,18 @@ export function generateMcpServer(decl: PasoDeclaration, onLog?: LogCallback): M
 
       if (onLog) onLog(cap.name, result, decl);
 
-      if (result.error || (result.status && result.status >= 400)) {
+      if (result.error) {
         return {
           content: [{ type: 'text' as const, text: formatError(result, decl) }],
+        };
+      }
+
+      if (result.status && result.status >= 400) {
+        const text = result.body
+          ? `${formatError(result, decl)}\n\nResponse body:\n${result.body}`
+          : formatError(result, decl);
+        return {
+          content: [{ type: 'text' as const, text }],
         };
       }
 
@@ -72,7 +81,11 @@ function buildZodSchema(cap: PasoCapability): Record<string, z.ZodTypeAny> | und
     let field = inputToZod(input);
 
     if (!input.required) {
-      field = field.optional();
+      if (input.default !== undefined) {
+        field = field.optional().default(input.default);
+      } else {
+        field = field.optional();
+      }
     }
 
     if (input.description) {
@@ -97,8 +110,13 @@ function inputToZod(input: PasoInput): z.ZodTypeAny {
       return z.boolean();
     case 'enum':
       if (input.values && input.values.length > 0) {
-        const vals = input.values.map((v) => String(v));
-        return z.enum(vals as [string, ...string[]]);
+        const allStrings = input.values.every((v) => typeof v === 'string');
+        if (allStrings) {
+          return z.enum(input.values as [string, ...string[]]);
+        }
+        // Mixed or numeric enums: use z.union of literals to preserve types
+        const literals = input.values.map((v) => z.literal(v as string | number | boolean));
+        return z.union(literals as unknown as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
       }
       return z.string();
     case 'array':

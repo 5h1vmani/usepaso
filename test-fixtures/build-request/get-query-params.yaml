@@ -1,0 +1,36 @@
+description: GET request puts params in query string
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+  capabilities:
+    - name: search_items
+      description: Search items
+      method: GET
+      path: /items
+      permission: read
+      inputs:
+        q:
+          type: string
+          description: Search query
+          in: query
+        page:
+          type: integer
+          description: Page number
+          in: query
+
+capability: search_items
+args:
+  q: "test"
+  page: 2
+
+expected:
+  method: GET
+  url_contains:
+    base: https://api.example.com/items
+    params:
+      q: "test"
+      page: "2"

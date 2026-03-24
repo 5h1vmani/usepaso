@@ -43,15 +43,23 @@ export function buildRequest(
         case 'query':
           queryParams[name] = String(value);
           break;
+        case 'header':
+          // Handled in the header loop below
+          break;
         case 'body':
-        default:
           bodyParams[name] = value;
           break;
+        default:
+          throw new Error(
+            `Unknown input location "${location}" for parameter "${name}". Expected one of: path, query, body, header.`,
+          );
       }
     }
   }
 
-  const url = new URL(path, decl.service.base_url);
+  const baseUrl = decl.service.base_url.replace(/\/+$/, '');
+  const fullPath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(`${baseUrl}${fullPath}`);
   for (const [k, v] of Object.entries(queryParams)) {
     url.searchParams.set(k, v);
   }
@@ -62,12 +70,30 @@ export function buildRequest(
   };
 
   if (decl.service.auth) {
-    const token = process.env.USEPASO_AUTH_TOKEN;
-    if (token) {
-      const authHeader = decl.service.auth.header || 'Authorization';
-      const prefix =
-        decl.service.auth.prefix ?? (decl.service.auth.type === 'bearer' ? 'Bearer' : '');
-      headers[authHeader] = prefix ? `${prefix} ${token}` : token;
+    if (decl.service.auth.type === 'none') {
+      // Skip auth — notice is logged once at command startup, not per-request
+    } else {
+      const token = process.env.USEPASO_AUTH_TOKEN;
+      if (token) {
+        const authType = decl.service.auth.type;
+        const authHeader = decl.service.auth.header || 'Authorization';
+        switch (authType) {
+          case 'bearer':
+          case 'oauth2': {
+            const prefix = decl.service.auth.prefix ?? 'Bearer';
+            headers[authHeader] = prefix ? `${prefix} ${token}` : token;
+            break;
+          }
+          case 'api_key':
+            headers[authHeader] = token;
+            break;
+          default:
+            process.stderr.write(
+              `Warning: unknown auth.type "${authType}" — sending token as-is in ${authHeader}\n`,
+            );
+            headers[authHeader] = token;
+        }
+      }
     }
   }
 
@@ -75,7 +101,7 @@ export function buildRequest(
   if (cap.inputs) {
     for (const [name, input] of Object.entries(cap.inputs)) {
       if (input.in === 'header' && args[name] !== undefined) {
-        headers[name] = String(args[name]);
+        headers[name] = String(args[name]).replace(/[\r\n]/g, '');
       }
     }
   }
@@ -103,6 +129,7 @@ export async function executeRequest(req: ExecutionRequest): Promise<ExecutionRe
     const fetchOptions: RequestInit = {
       method: req.method,
       headers: req.headers,
+      signal: AbortSignal.timeout(30000),
     };
 
     if (req.body) {

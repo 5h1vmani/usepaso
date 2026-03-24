@@ -52,6 +52,12 @@ def validate(decl: PasoDeclaration) -> list[ValidationError]:
     elif not isinstance(decl.capabilities, list):
         errors.append(ValidationError(path='capabilities', message='capabilities must be an array'))
     else:
+        if len(decl.capabilities) == 0:
+            errors.append(ValidationError(
+                path='capabilities',
+                message='capabilities array is empty — MCP server will have no tools',
+                level='warning',
+            ))
         names: set[str] = set()
         for i, cap in enumerate(decl.capabilities):
             prefix = f'capabilities[{i}]'
@@ -165,6 +171,11 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
                     path=f'{input_prefix}.in',
                     message=f'in must be one of: {", ".join(VALID_IN_VALUES)}'
                 ))
+            if input_obj.in_ == 'body' and cap.method in ('GET', 'DELETE'):
+                errors.append(ValidationError(
+                    path=input_prefix,
+                    message=f'body parameters are not supported for {cap.method} requests'
+                ))
 
     # Validate path params exist in inputs
     if cap.path:
@@ -175,7 +186,7 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
                     path=f'{prefix}.path',
                     message=f'path parameter "{{{param}}}" not found in inputs'
                 ))
-            elif cap.inputs and cap.inputs[param].in_ and cap.inputs[param].in_ != 'path':
+            elif cap.inputs and cap.inputs[param].in_ != 'path':
                 errors.append(ValidationError(
                     path=f'{prefix}.inputs.{param}',
                     message='path parameter must have in: path'

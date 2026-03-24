@@ -1,0 +1,27 @@
+description: API key auth sends token in Authorization header without prefix
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+    auth:
+      type: api_key
+  capabilities:
+    - name: get_items
+      description: Get items
+      method: GET
+      path: /items
+      permission: read
+
+capability: get_items
+args: {}
+env:
+  USEPASO_AUTH_TOKEN: sk-test-key-123
+
+expected:
+  method: GET
+  url: https://api.example.com/items
+  headers:
+    Authorization: "sk-test-key-123"

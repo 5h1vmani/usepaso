@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseString, parseFile } from '../src/parser';
+import { parseAndValidate } from '../src/index';
 import { join } from 'path';
 
 describe('parseString', () => {
@@ -63,5 +64,42 @@ describe('parseFile', () => {
 
   it('throws on missing file', () => {
     expect(() => parseFile('/nonexistent/usepaso.yaml')).toThrow();
+  });
+});
+
+describe('parseAndValidate', () => {
+  it('returns declaration for valid YAML', () => {
+    const yaml = `
+version: "1.0"
+service:
+  name: Test
+  description: A test
+  base_url: https://api.example.com
+capabilities:
+  - name: get_item
+    description: Get item
+    method: GET
+    path: /items
+    permission: read
+`;
+    const decl = parseAndValidate(yaml);
+    expect(decl.service.name).toBe('Test');
+  });
+
+  it('throws on invalid YAML', () => {
+    const yaml = `
+version: "2.0"
+service:
+  name: Test
+  description: A test
+  base_url: https://api.example.com
+capabilities:
+  - name: get_item
+    description: Get item
+    method: GET
+    path: /items
+    permission: read
+`;
+    expect(() => parseAndValidate(yaml)).toThrow('Validation failed');
   });
 });

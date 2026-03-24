@@ -7,7 +7,7 @@ import json
 import os
 import time
 from typing import Any, Optional
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -58,10 +58,15 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration) -> dic
                 body_params[param_name] = param_value
             elif in_type == "header":
                 header_params[param_name] = param_value
+            else:
+                raise ValueError(
+                    f'Unknown input location "{in_type}" for parameter "{param_name}". '
+                    f'Expected one of: path, query, body, header.'
+                )
 
     # Substitute path parameters into path
     for param_name, param_value in path_params.items():
-        path = path.replace(f"{{{param_name}}}", str(param_value))
+        path = path.replace(f"{{{param_name}}}", quote(str(param_value), safe=''))
 
     # Build URL
     base_url = decl.service.base_url.rstrip("/")
@@ -81,18 +86,28 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration) -> dic
 
     # Add authentication header
     auth_token = os.environ.get("USEPASO_AUTH_TOKEN")
-    if auth_token and decl.service.auth:
-        auth = decl.service.auth
-        if auth.type == "bearer":
+    if decl.service.auth:
+        if decl.service.auth.type == "none":
+            pass  # Skip auth — notice is logged once at command startup, not per-request
+        elif auth_token:
+            auth = decl.service.auth
             header_name = auth.header or "Authorization"
-            prefix = auth.prefix if auth.prefix is not None else "Bearer"
-            headers[header_name] = f"{prefix} {auth_token}" if prefix else auth_token
-        elif auth.type == "api_key":
-            header_name = auth.header or "X-API-Key"
-            headers[header_name] = auth_token
+            if auth.type in ("bearer", "oauth2"):
+                prefix = auth.prefix if auth.prefix is not None else "Bearer"
+                headers[header_name] = f"{prefix} {auth_token}" if prefix else auth_token
+            elif auth.type == "api_key":
+                headers[header_name] = auth_token
+            else:
+                import sys
+                print(
+                    f'Warning: unknown auth.type "{auth.type}" — sending token as-is in {header_name}',
+                    file=sys.stderr,
+                )
+                headers[header_name] = auth_token
 
-    # Add header parameters
-    headers.update(header_params)
+    # Add header parameters (strip newlines to prevent header injection)
+    for k, v in header_params.items():
+        headers[k] = str(v).replace('\r', '').replace('\n', '')
 
     # Build request dict
     req = {
@@ -129,7 +144,7 @@ async def execute_request(req: dict) -> dict:
     }
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.request(
                 method=req["method"],
                 url=req["url"],

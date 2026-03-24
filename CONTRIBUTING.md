@@ -70,6 +70,22 @@ usepaso/
 - **Examples must validate.** All examples in `examples/` must pass `usepaso validate`.
 - **Tests are required.** No PR without tests.
 
+## Engineering Principles
+
+We follow a few standard principles. Here's how they show up concretely in this project:
+
+**Single Source of Truth (SSOT)** — Every piece of knowledge has exactly one canonical home. The spec format lives in `spec/usepaso-spec.md`. Validation rules live in `spec/usepaso.schema.json`. The init template lives in `examples/template/usepaso.yaml`. Version numbers live in `package.json` and `pyproject.toml`. Don't duplicate these — reference them. See the SSOT table in `AGENTS.md` for the full mapping.
+
+**Don't Repeat Yourself (DRY)** — The two SDKs are an intentional exception: TypeScript and Python can't share code, so logic is implemented twice. Our mitigation is shared test fixtures in `test-fixtures/` — both SDKs run the same YAML input/output pairs, so behavioral drift is caught automatically. Within each SDK, HTTP logic lives in a single `executor` module (see the [shared executor decision](decisions.md) for why).
+
+**Single Responsibility** — Each module does one thing. The parser reads YAML. The validator checks rules. The executor builds and sends HTTP requests. The MCP generator wires capabilities to tools. The CLI commands are thin glue. Functions should be pure where possible — `buildRequest` takes data in and returns data out, it doesn't read env vars or log to stderr. Side effects belong in the CLI entry points.
+
+**Fail Loud, Fail Early** — Silent failures are the most expensive kind of bug. Every `switch`/`if-elif` on a type discriminator (`auth.type`, `input.in`) must have an explicit `default`/`else` that throws or warns — never a silent fallthrough. Functions throw errors rather than calling `process.exit()`/`sys.exit()`, so callers can catch and report multiple problems at once. The validator collects all errors before returning, not one at a time.
+
+**Least Privilege** — The spec is designed around this: capabilities have `permission` tiers (`read`/`write`/`admin`), `consent_required` for destructive actions, `constraints` for rate limits and value bounds, and a `forbidden` list to explicitly block endpoints agents should never call. When adding new features, default to restrictive — agents should only get access to what's explicitly declared.
+
+For the project-specific engineering rules (fix discipline, testing patterns, dual-SDK parity), see the `Engineering Rules` section in `AGENTS.md`. For the reasoning behind these decisions, see `decisions.md`.
+
 ## Questions?
 
 Open an issue or start a discussion.

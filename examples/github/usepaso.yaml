@@ -162,10 +162,12 @@ capabilities:
         type: enum
         values: [created, updated, popularity, long-running]
         default: created
+        description: Sort order for results
         in: query
       per_page:
         type: integer
         default: 30
+        description: Number of results per page (max 100)
         in: query
     output:
       pull_requests:

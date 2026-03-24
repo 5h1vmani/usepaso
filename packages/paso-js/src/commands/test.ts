@@ -3,6 +3,35 @@ import { resolve } from 'path';
 import { loadAndValidate } from './shared';
 import { buildRequest, executeRequest, formatError } from '../executor';
 
+const INTEGER_RE = /^-?\d+$/;
+const NUMBER_RE = /^-?\d+(\.\d+)?$/;
+
+export function coerceValue(raw: string, type: string, key: string): unknown {
+  switch (type) {
+    case 'integer': {
+      if (!INTEGER_RE.test(raw)) {
+        throw new Error(`Parameter "${key}" must be an integer, got "${raw}"`);
+      }
+      return parseInt(raw, 10);
+    }
+    case 'number': {
+      if (!NUMBER_RE.test(raw)) {
+        throw new Error(`Parameter "${key}" must be a number, got "${raw}"`);
+      }
+      return parseFloat(raw);
+    }
+    case 'boolean':
+      if (raw === 'true') return true;
+      if (raw === 'false') return false;
+      throw new Error(`Parameter "${key}" must be true or false, got "${raw}"`);
+    case 'string':
+    case 'enum':
+      return raw;
+    default:
+      return raw;
+  }
+}
+
 export function registerTest(program: Command): void {
   program
     .command('test <capability>')
@@ -22,6 +51,11 @@ export function registerTest(program: Command): void {
       try {
         const decl = loadAndValidate(resolve(opts.file));
 
+        // Auth notice (once, not per-request)
+        if (decl.service.auth?.type === 'none' && process.env.USEPASO_AUTH_TOKEN) {
+          console.error(`Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN`);
+        }
+
         const cap = decl.capabilities.find((c) => c.name === capabilityName);
         if (!cap) {
           console.error(`Capability "${capabilityName}" not found.`);
@@ -29,30 +63,43 @@ export function registerTest(program: Command): void {
           process.exit(1);
         }
 
-        // Parse params
+        // Parse params using declared input types
         const args: Record<string, unknown> = {};
+        const paramErrors: string[] = [];
         for (const p of opts.param) {
           const eq = p.indexOf('=');
           if (eq === -1) {
-            console.error(`Invalid param format: "${p}". Use key=value.`);
-            process.exit(1);
+            paramErrors.push(`Invalid param format: "${p}". Use key=value.`);
+            continue;
           }
           const key = p.slice(0, eq);
-          let value: unknown = p.slice(eq + 1);
-          if (value === 'true') value = true;
-          else if (value === 'false') value = false;
-          else if (!isNaN(Number(value)) && value !== '') value = Number(value);
-          args[key] = value;
+          const raw = p.slice(eq + 1);
+          const inputDef = cap.inputs?.[key];
+
+          if (inputDef) {
+            try {
+              args[key] = coerceValue(raw, inputDef.type, key);
+            } catch (e) {
+              paramErrors.push(e instanceof Error ? e.message : String(e));
+            }
+          } else {
+            // Unknown param — keep as string
+            args[key] = raw;
+          }
         }
 
         // Check for missing required params
         if (cap.inputs) {
           for (const [name, input] of Object.entries(cap.inputs)) {
             if (input.required && !(name in args)) {
-              console.error(`Missing required parameter: ${name} (${input.description})`);
-              process.exit(1);
+              paramErrors.push(`Missing required parameter: ${name} (${input.description})`);
             }
           }
+        }
+
+        if (paramErrors.length > 0) {
+          for (const err of paramErrors) console.error(err);
+          process.exit(1);
         }
 
         const req = buildRequest(cap, args, decl);
@@ -61,8 +108,10 @@ export function registerTest(program: Command): void {
           console.log('--- DRY RUN (no request will be made) ---');
           console.log('');
           console.log(`${req.method} ${req.url}`);
+          const token = process.env.USEPASO_AUTH_TOKEN;
           for (const [k, v] of Object.entries(req.headers)) {
-            const display = k.toLowerCase() === 'authorization' ? `${v.slice(0, 12)}...` : v;
+            const display =
+              token && token.length >= 8 && v.includes(token) ? `${v.slice(0, 12)}...` : v;
             console.log(`${k}: ${display}`);
           }
           if (req.body) {

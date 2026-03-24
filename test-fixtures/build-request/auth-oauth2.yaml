@@ -1,0 +1,27 @@
+description: OAuth2 auth sends Authorization header with Bearer prefix
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+    auth:
+      type: oauth2
+  capabilities:
+    - name: get_items
+      description: Get items
+      method: GET
+      path: /items
+      permission: read
+
+capability: get_items
+args: {}
+env:
+  USEPASO_AUTH_TOKEN: oauth-access-token
+
+expected:
+  method: GET
+  url: https://api.example.com/items
+  headers:
+    Authorization: "Bearer oauth-access-token"

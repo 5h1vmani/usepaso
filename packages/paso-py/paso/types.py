@@ -13,7 +13,7 @@ class PasoAuth:
         if data is None:
             return None
         return cls(
-            type=data.get('type'),
+            type=data.get('type', ''),
             header=data.get('header'),
             prefix=data.get('prefix')
         )
@@ -30,9 +30,9 @@ class PasoService:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'PasoService':
         return cls(
-            name=data.get('name'),
-            description=data.get('description'),
-            base_url=data.get('base_url'),
+            name=data.get('name', ''),
+            description=data.get('description', ''),
+            base_url=data.get('base_url', ''),
             version=data.get('version'),
             auth=PasoAuth.from_dict(data.get('auth'))
         )
@@ -50,8 +50,8 @@ class PasoInput:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'PasoInput':
         return cls(
-            type=data.get('type'),
-            description=data.get('description'),
+            type=data.get('type', ''),
+            description=data.get('description', ''),
             required=data.get('required'),
             values=data.get('values'),
             default=data.get('default'),
@@ -67,7 +67,7 @@ class PasoOutput:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'PasoOutput':
         return cls(
-            type=data.get('type'),
+            type=data.get('type', ''),
             description=data.get('description')
         )
 
@@ -129,11 +129,11 @@ class PasoCapability:
             ]
 
         return cls(
-            name=data.get('name'),
-            description=data.get('description'),
-            method=data.get('method'),
-            path=data.get('path'),
-            permission=data.get('permission'),
+            name=data.get('name', ''),
+            description=data.get('description', ''),
+            method=data.get('method', ''),
+            path=data.get('path', ''),
+            permission=data.get('permission', ''),
             consent_required=data.get('consent_required'),
             inputs=inputs,
             output=output,
@@ -177,7 +177,7 @@ class PasoDeclaration:
         permissions = PasoPermissions.from_dict(data.get('permissions'))
 
         return cls(
-            version=data.get('version'),
+            version=data.get('version', ''),
             service=service,
             capabilities=capabilities,
             permissions=permissions
@@ -188,3 +188,4 @@ class PasoDeclaration:
 class ValidationError:
     path: str
     message: str
+    level: str = 'error'  # 'error' or 'warning'

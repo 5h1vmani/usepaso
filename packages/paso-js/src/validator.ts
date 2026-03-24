@@ -57,6 +57,13 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
   } else if (!Array.isArray(decl.capabilities)) {
     errors.push({ path: 'capabilities', message: 'capabilities must be an array' });
   } else {
+    if (decl.capabilities.length === 0) {
+      errors.push({
+        path: 'capabilities',
+        message: 'capabilities array is empty — MCP server will have no tools',
+        level: 'warning',
+      });
+    }
     const names = new Set<string>();
     decl.capabilities.forEach((cap, i) => {
       const prefix = `capabilities[${i}]`;
@@ -180,6 +187,12 @@ function validateCapability(
           message: `in must be one of: ${VALID_IN_VALUES.join(', ')}`,
         });
       }
+      if (input.in === 'body' && ['GET', 'DELETE'].includes(cap.method)) {
+        errors.push({
+          path: inputPrefix,
+          message: `body parameters are not supported for ${cap.method} requests`,
+        });
+      }
     }
   }
 
@@ -194,7 +207,7 @@ function validateCapability(
             path: `${prefix}.path`,
             message: `path parameter "{${paramName}}" not found in inputs`,
           });
-        } else if (cap.inputs[paramName].in && cap.inputs[paramName].in !== 'path') {
+        } else if (cap.inputs[paramName].in !== 'path') {
           errors.push({
             path: `${prefix}.inputs.${paramName}`,
             message: `path parameter must have in: path`,

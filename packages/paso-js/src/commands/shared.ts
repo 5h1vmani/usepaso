@@ -10,7 +10,10 @@ export function loadAndValidate(filePath: string): PasoDeclaration {
     process.exit(1);
   }
   const decl = parseFile(filePath);
-  const errors = validate(decl);
+  const results = validate(decl);
+  const errors = results.filter((e) => e.level !== 'warning');
+  const warnings = results.filter((e) => e.level === 'warning');
+
   if (errors.length > 0) {
     console.error(`Validation failed with ${errors.length} error(s):`);
     for (const err of errors) {
@@ -18,6 +21,11 @@ export function loadAndValidate(filePath: string): PasoDeclaration {
     }
     process.exit(1);
   }
+
+  for (const w of warnings) {
+    console.error(`  warning: ${w.path}: ${w.message}`);
+  }
+
   return decl;
 }
 

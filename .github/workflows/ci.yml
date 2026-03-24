@@ -46,6 +46,35 @@ jobs:
         working-directory: packages/paso-py
         run: pytest tests/ -v
 
+  build-js:
+    name: Build (JS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: packages/paso-js
+        run: npm ci
+      - name: Build
+        working-directory: packages/paso-js
+        run: npm run build
+
+  build-py:
+    name: Build (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: pip install build
+      - name: Build package
+        working-directory: packages/paso-py
+        run: python -m build
+
   lint-js:
     name: Lint & Format (JS)
     runs-on: ubuntu-latest
@@ -63,3 +92,46 @@ jobs:
       - name: Format check
         working-directory: packages/paso-js
         run: npx prettier --check "src/**/*.ts" "tests/**/*.ts"
+
+  lint-py:
+    name: Lint & Type Check (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: packages/paso-py
+        run: pip install -e ".[dev]"
+      - name: Type check
+        working-directory: packages/paso-py
+        run: python -m mypy paso/ --ignore-missing-imports
+
+  validate-examples:
+    name: Validate Examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: packages/paso-js
+        run: npm ci
+      - name: Build
+        working-directory: packages/paso-js
+        run: npm run build
+      - name: Validate all examples
+        run: |
+          for dir in examples/*/; do
+            if [ -f "$dir/usepaso.yaml" ]; then
+              echo "Validating $dir..."
+              node packages/paso-js/dist/cli.js validate -f "$dir/usepaso.yaml"
+            fi
+          done
+      - name: Dry-run smoke test (Stripe)
+        run: |
+          output=$(node packages/paso-js/dist/cli.js test list_customers -f examples/stripe/usepaso.yaml --dry-run 2>&1)
+          echo "$output"
+          echo "$output" | grep -q "api.stripe.com/v1/customers" || { echo "FAIL: URL missing /v1 prefix"; exit 1; }

@@ -1,0 +1,27 @@
+description: Bearer auth sends Authorization header with Bearer prefix
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+    auth:
+      type: bearer
+  capabilities:
+    - name: get_items
+      description: Get items
+      method: GET
+      path: /items
+      permission: read
+
+capability: get_items
+args: {}
+env:
+  USEPASO_AUTH_TOKEN: test-token-123
+
+expected:
+  method: GET
+  url: https://api.example.com/items
+  headers:
+    Authorization: "Bearer test-token-123"

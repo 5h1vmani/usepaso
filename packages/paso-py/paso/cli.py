@@ -51,12 +51,18 @@ def _load_and_validate(file_path):
         click.echo(f"Error parsing {file_path}: {e}", err=True)
         sys.exit(1)
 
-    errors = validate(decl)
+    results = validate(decl)
+    errors = [e for e in results if e.level != 'warning']
+    warnings = [e for e in results if e.level == 'warning']
+
     if errors:
         click.echo(f"Validation failed with {len(errors)} error(s):", err=True)
         for error in errors:
             click.echo(f"  {error.path}: {error.message}", err=True)
         sys.exit(1)
+
+    for w in warnings:
+        click.echo(f"  warning: {w.path}: {w.message}", err=True)
 
     return decl
 
@@ -200,6 +206,33 @@ def inspect_cmd(file):
         click.echo(f"Forbidden: {', '.join(decl.permissions.forbidden)}")
 
 
+import re as _re
+
+_INTEGER_RE = _re.compile(r'^-?\d+$')
+_NUMBER_RE = _re.compile(r'^-?\d+(\.\d+)?$')
+
+
+def _coerce_value(raw: str, declared_type: str, key: str):
+    """Coerce a CLI string value to the declared input type. Raises ValueError on invalid input."""
+    if declared_type == 'integer':
+        if not _INTEGER_RE.match(raw):
+            raise ValueError(f'Parameter "{key}" must be an integer, got "{raw}"')
+        return int(raw)
+    elif declared_type == 'number':
+        if not _NUMBER_RE.match(raw):
+            raise ValueError(f'Parameter "{key}" must be a number, got "{raw}"')
+        return float(raw)
+    elif declared_type == 'boolean':
+        if raw == 'true':
+            return True
+        elif raw == 'false':
+            return False
+        raise ValueError(f'Parameter "{key}" must be true or false, got "{raw}"')
+    else:
+        # string, enum, array, object — keep as string
+        return raw
+
+
 # ---- test ----
 
 @main.command('test')
@@ -213,6 +246,10 @@ def test_cmd(capability, file, param, dry_run):
 
     decl = _load_and_validate(file)
 
+    # Auth notice (once, not per-request)
+    if decl.service.auth and decl.service.auth.type == 'none' and os.environ.get('USEPASO_AUTH_TOKEN'):
+        click.echo('Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN', err=True)
+
     cap = None
     for c in decl.capabilities:
         if c.name == capability:
@@ -225,33 +262,35 @@ def test_cmd(capability, file, param, dry_run):
         click.echo(f'Available: {names}', err=True)
         sys.exit(1)
 
-    # Parse params
+    # Parse params using declared input types
     args = {}
+    param_errors = []
     for p in param:
         eq = p.find('=')
         if eq == -1:
-            click.echo(f'Invalid param format: "{p}". Use key=value.', err=True)
-            sys.exit(1)
+            param_errors.append(f'Invalid param format: "{p}". Use key=value.')
+            continue
         key = p[:eq]
-        value = p[eq + 1:]
-        # Auto-convert
-        if value == 'true':
-            value = True
-        elif value == 'false':
-            value = False
-        elif value.replace('.', '', 1).replace('-', '', 1).isdigit():
+        raw = p[eq + 1:]
+        input_def = cap.inputs.get(key) if cap.inputs else None
+        if input_def:
             try:
-                value = int(value) if '.' not in value else float(value)
-            except ValueError:
-                pass
-        args[key] = value
+                args[key] = _coerce_value(raw, input_def.type, key)
+            except ValueError as e:
+                param_errors.append(str(e))
+        else:
+            args[key] = raw
 
     # Check required params
     if cap.inputs:
         for name, inp in cap.inputs.items():
             if inp.required and name not in args:
-                click.echo(f"Missing required parameter: {name} ({inp.description})", err=True)
-                sys.exit(1)
+                param_errors.append(f"Missing required parameter: {name} ({inp.description})")
+
+    if param_errors:
+        for err in param_errors:
+            click.echo(err, err=True)
+        sys.exit(1)
 
     req = build_request(cap, args, decl)
 
@@ -260,7 +299,8 @@ def test_cmd(capability, file, param, dry_run):
         click.echo("")
         click.echo(f"{req['method']} {req['url']}")
         for k, v in req['headers'].items():
-            display = f"{v[:12]}..." if k.lower() == 'authorization' else v
+            token = os.environ.get('USEPASO_AUTH_TOKEN', '')
+            display = f"{v[:12]}..." if token and len(token) >= 8 and token in v else v
             click.echo(f"{k}: {display}")
         if req.get('body'):
             click.echo("")
@@ -301,12 +341,15 @@ def serve(file, verbose, watch):
 
     cap_count = len(decl.capabilities) if decl.capabilities else 0
 
-    # Auth warning
-    if decl.service.auth and decl.service.auth.type != 'none' and not os.environ.get('USEPASO_AUTH_TOKEN'):
-        click.echo(
-            f'Warning: auth type "{decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.',
-            err=True
-        )
+    # Auth notices (logged once at startup, not per-request)
+    if decl.service.auth:
+        if decl.service.auth.type == 'none' and os.environ.get('USEPASO_AUTH_TOKEN'):
+            click.echo('Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN', err=True)
+        elif decl.service.auth.type != 'none' and not os.environ.get('USEPASO_AUTH_TOKEN'):
+            click.echo(
+                f'Warning: auth type "{decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.',
+                err=True
+            )
 
     click.echo(f'usepaso serving "{decl.service.name}" ({cap_count} capabilities)', err=True)
     click.echo('Transport: stdio — waiting for MCP client...', err=True)

@@ -4,6 +4,7 @@ Translates an OpenAPI specification into a Paso declarative format.
 """
 
 import re
+from typing import Optional
 import yaml
 
 MAX_CAPABILITIES = 20
@@ -18,7 +19,7 @@ def to_snake_case(s: str) -> str:
     return s.strip('_')
 
 
-def derive_name(method: str, path: str, operation_id: str = None) -> str:
+def derive_name(method: str, path: str, operation_id: Optional[str] = None) -> str:
     if operation_id:
         candidate = to_snake_case(operation_id)
         if re.match(r'^[a-z]', candidate):
@@ -108,17 +109,26 @@ def requires_consent(method: str) -> bool:
     return method.upper() in ('DELETE', 'PUT', 'PATCH')
 
 
-def resolve_refs(obj, root):
+def resolve_refs(obj, root, _resolving=None):
     """Resolve all $ref pointers in an OpenAPI spec recursively."""
+    if _resolving is None:
+        _resolving = set()
+
     if obj is None or not isinstance(obj, (dict, list)):
         return obj
 
     if isinstance(obj, list):
-        return [resolve_refs(item, root) for item in obj]
+        return [resolve_refs(item, root, _resolving) for item in obj]
 
     if '$ref' in obj and isinstance(obj['$ref'], str):
         ref = obj['$ref']
         if ref.startswith('#/'):
+            # Circular ref detection
+            if ref in _resolving:
+                import sys
+                print(f"Warning: circular $ref detected at {ref} — using placeholder", file=sys.stderr)
+                return {"type": "object", "description": f"(circular reference to {ref})"}
+
             path_parts = ref[2:].split('/')
             target = root
             for part in path_parts:
@@ -126,15 +136,20 @@ def resolve_refs(obj, root):
                     target = target.get(part)
                 else:
                     return obj
-            # Merge sibling properties
-            siblings = {k: v for k, v in obj.items() if k != '$ref'}
-            if siblings and isinstance(target, dict):
-                merged = {**target, **siblings}
-                return resolve_refs(merged, root)
-            return resolve_refs(target, root)
+
+            _resolving.add(ref)
+            try:
+                # Merge sibling properties
+                siblings = {k: v for k, v in obj.items() if k != '$ref'}
+                if siblings and isinstance(target, dict):
+                    merged = {**target, **siblings}
+                    return resolve_refs(merged, root, _resolving)
+                return resolve_refs(target, root, _resolving)
+            finally:
+                _resolving.discard(ref)
         return obj
 
-    return {k: resolve_refs(v, root) for k, v in obj.items()}
+    return {k: resolve_refs(v, root, _resolving) for k, v in obj.items()}
 
 
 def build_inputs(operation: dict, path_str: str):
@@ -272,8 +287,8 @@ def generate_from_openapi(openapi_spec: dict) -> dict:
                 total_operations += 1
 
     # Build capabilities
-    capabilities = []
-    seen_names = set()
+    capabilities: list[dict] = []
+    seen_names: set[str] = set()
 
     for path_str, path_item in paths.items():
         if not path_item:

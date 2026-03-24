@@ -417,11 +417,15 @@ function buildOutput(operation: OaOperation): Record<string, PasoOutput> | undef
  * Resolve all $ref pointers in an OpenAPI spec (in-place, recursive).
  * Handles JSON Pointer references like "#/components/schemas/Pet".
  */
-function resolveRefs(obj: unknown, root: Record<string, unknown>): unknown {
+function resolveRefs(
+  obj: unknown,
+  root: Record<string, unknown>,
+  resolving: Set<string> = new Set(),
+): unknown {
   if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
 
   if (Array.isArray(obj)) {
-    return obj.map((item) => resolveRefs(item, root));
+    return obj.map((item) => resolveRefs(item, root, resolving));
   }
 
   const record = obj as Record<string, unknown>;
@@ -430,6 +434,12 @@ function resolveRefs(obj: unknown, root: Record<string, unknown>): unknown {
   if (typeof record['$ref'] === 'string') {
     const ref = record['$ref'];
     if (ref.startsWith('#/')) {
+      // Circular ref detection
+      if (resolving.has(ref)) {
+        process.stderr.write(`Warning: circular $ref detected at ${ref} — using placeholder\n`);
+        return { type: 'object', description: `(circular reference to ${ref})` };
+      }
+
       const path = ref.slice(2).split('/');
       let target: unknown = root;
       for (const segment of path) {
@@ -439,16 +449,22 @@ function resolveRefs(obj: unknown, root: Record<string, unknown>): unknown {
           return obj; // Unresolvable — return as-is
         }
       }
-      // Merge any sibling properties (e.g., description alongside $ref)
-      const siblings = Object.keys(record).filter((k) => k !== '$ref');
-      if (siblings.length > 0 && typeof target === 'object' && target !== null) {
-        const merged = { ...(target as Record<string, unknown>) };
-        for (const key of siblings) {
-          merged[key] = record[key];
+
+      resolving.add(ref);
+      try {
+        // Merge any sibling properties (e.g., description alongside $ref)
+        const siblings = Object.keys(record).filter((k) => k !== '$ref');
+        if (siblings.length > 0 && typeof target === 'object' && target !== null) {
+          const merged = { ...(target as Record<string, unknown>) };
+          for (const key of siblings) {
+            merged[key] = record[key];
+          }
+          return resolveRefs(merged, root, resolving);
         }
-        return resolveRefs(merged, root);
+        return resolveRefs(target, root, resolving);
+      } finally {
+        resolving.delete(ref);
       }
-      return resolveRefs(target, root);
     }
     return obj; // External refs — return as-is
   }
@@ -456,7 +472,7 @@ function resolveRefs(obj: unknown, root: Record<string, unknown>): unknown {
   // Recurse into all properties
   const resolved: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(record)) {
-    resolved[key] = resolveRefs(value, root);
+    resolved[key] = resolveRefs(value, root, resolving);
   }
   return resolved;
 }

@@ -110,7 +110,7 @@ If `permissions` is omitted, each capability's `permission` field is used direct
 7. `path` must start with `/`
 8. Parameters referenced in `path` (e.g., `{project_id}`) must exist in `inputs` with `in: path`
 9. `enum` type inputs must have `values` defined
-10. If `permissions` is defined, every capability name referenced must exist in `capabilities`
+10. If `permissions` is defined, every capability name in `read`, `write`, or `admin` tiers must exist in `capabilities`. The `forbidden` tier may reference capability names not declared, to explicitly block API endpoints.
 11. A capability cannot appear in both a permission tier and `forbidden`
 
 ## Example

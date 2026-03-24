@@ -1,0 +1,27 @@
+description: Auth type none skips auth even when token is set
+
+declaration:
+  version: "1.0"
+  service:
+    name: PublicAPI
+    description: Public API
+    base_url: https://api.example.com
+    auth:
+      type: none
+  capabilities:
+    - name: get_status
+      description: Get status
+      method: GET
+      path: /status
+      permission: read
+
+capability: get_status
+args: {}
+env:
+  USEPASO_AUTH_TOKEN: should-be-ignored
+
+expected:
+  method: GET
+  url: https://api.example.com/status
+  headers_absent:
+    - Authorization

@@ -1,0 +1,27 @@
+description: Base URL with path prefix preserves the path
+
+declaration:
+  version: "1.0"
+  service:
+    name: Stripe
+    description: Payment processing
+    base_url: https://api.stripe.com/v1
+  capabilities:
+    - name: list_customers
+      description: List customers
+      method: GET
+      path: /customers
+      permission: read
+      inputs:
+        limit:
+          type: integer
+          description: Max results
+          in: query
+
+capability: list_customers
+args:
+  limit: 10
+
+expected:
+  method: GET
+  url: https://api.stripe.com/v1/customers?limit=10

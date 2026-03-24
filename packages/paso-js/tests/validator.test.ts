@@ -103,6 +103,46 @@ describe('validate', () => {
     expect(errors.some((e) => e.message.includes('item_id'))).toBe(true);
   });
 
+  it('fails on path parameter without in: path', () => {
+    const decl = minimal();
+    decl.capabilities[0].path = '/items/{item_id}';
+    decl.capabilities[0].inputs = {
+      item_id: { type: 'string', description: 'Item ID', in: 'query' },
+    };
+    const errors = validate(decl);
+    expect(errors.some((e) => e.message.includes('must have in: path'))).toBe(true);
+  });
+
+  it('fails on path parameter with in omitted', () => {
+    const decl = minimal();
+    decl.capabilities[0].path = '/items/{item_id}';
+    decl.capabilities[0].inputs = {
+      item_id: { type: 'string', description: 'Item ID' },
+    };
+    const errors = validate(decl);
+    expect(errors.some((e) => e.message.includes('must have in: path'))).toBe(true);
+  });
+
+  it('fails on body parameter for GET request', () => {
+    const decl = minimal();
+    decl.capabilities[0].method = 'GET';
+    decl.capabilities[0].inputs = {
+      filter: { type: 'string', description: 'Filter', in: 'body' },
+    };
+    const errors = validate(decl);
+    expect(errors.some((e) => e.message.includes('body parameters are not supported'))).toBe(true);
+  });
+
+  it('fails on body parameter for DELETE request', () => {
+    const decl = minimal();
+    decl.capabilities[0].method = 'DELETE';
+    decl.capabilities[0].inputs = {
+      id: { type: 'string', description: 'ID', in: 'body' },
+    };
+    const errors = validate(decl);
+    expect(errors.some((e) => e.message.includes('body parameters are not supported'))).toBe(true);
+  });
+
   it('fails when forbidden overlaps with a tier', () => {
     const decl = minimal();
     decl.permissions = {
@@ -120,6 +160,17 @@ describe('validate', () => {
     };
     const errors = validate(decl);
     expect(errors.some((e) => e.message.includes('unknown capability'))).toBe(true);
+  });
+
+  it('warns on empty capabilities array', () => {
+    const decl = minimal();
+    decl.capabilities = [];
+    const errors = validate(decl);
+    const warnings = errors.filter((e) => e.level === 'warning');
+    const realErrors = errors.filter((e) => e.level !== 'warning');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toContain('empty');
+    expect(realErrors).toHaveLength(0);
   });
 
   it('validates example files without errors', () => {

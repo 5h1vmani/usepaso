@@ -17,15 +17,22 @@ jobs:
       - name: Install dependencies
         working-directory: packages/paso-js
         run: npm ci
-      - name: Type check
+      - name: Build
         working-directory: packages/paso-js
-        run: npx tsc --noEmit
+        run: npm run build
       - name: Lint
         working-directory: packages/paso-js
         run: npx eslint src/
       - name: Test
         working-directory: packages/paso-js
         run: npm test
+      - name: Validate examples
+        run: |
+          for dir in examples/*/; do
+            if [ -f "$dir/usepaso.yaml" ]; then
+              node packages/paso-js/dist/cli.js validate -f "$dir/usepaso.yaml"
+            fi
+          done
 
   test-py:
     name: Test Python
@@ -38,6 +45,9 @@ jobs:
       - name: Install dependencies
         working-directory: packages/paso-py
         run: pip install -e ".[dev]"
+      - name: Type check
+        working-directory: packages/paso-py
+        run: python -m mypy paso/ --ignore-missing-imports
       - name: Test
         working-directory: packages/paso-py
         run: pytest tests/ -v

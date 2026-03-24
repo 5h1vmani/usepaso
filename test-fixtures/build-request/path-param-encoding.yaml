@@ -1,0 +1,28 @@
+description: Path parameters with special characters are URL-encoded
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+  capabilities:
+    - name: get_item
+      description: Get item by ID
+      method: GET
+      path: /items/{item_id}
+      permission: read
+      inputs:
+        item_id:
+          type: string
+          required: true
+          description: Item ID
+          in: path
+
+capability: get_item
+args:
+  item_id: "hello/world"
+
+expected:
+  method: GET
+  url: https://api.example.com/items/hello%2Fworld

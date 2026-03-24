@@ -64,4 +64,5 @@ export interface PasoPermissions {
 export interface ValidationError {
   path: string;
   message: string;
+  level?: 'error' | 'warning';
 }

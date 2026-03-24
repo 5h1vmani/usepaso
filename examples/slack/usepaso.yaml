@@ -134,6 +134,7 @@ capabilities:
         type: enum
         values: [score, timestamp]
         default: score
+        description: Sort results by relevance score or timestamp
         in: query
       count:
         type: integer

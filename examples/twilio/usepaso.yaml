@@ -6,7 +6,7 @@ service:
   base_url: https://api.twilio.com/2010-04-01/Accounts/{account_sid}
   version: "2010-04-01"
   auth:
-    type: basic
+    type: api_key
 
 capabilities:
   - name: send_sms
@@ -164,6 +164,7 @@ capabilities:
       PageSize:
         type: integer
         default: 50
+        description: Number of results per page
         in: query
     output:
       incoming_phone_numbers:

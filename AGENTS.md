@@ -129,6 +129,27 @@ Both SDKs must produce the same CLI output for the same operation. If you change
 - Directory names `paso-js` and `paso-py` are internal — these are not user-facing
 - Type names use `Paso` prefix (e.g., `PasoDeclaration`, `PasoCapability`) — this is intentional, don't rename to `UsePaso*`
 
+## Engineering Rules
+
+These exist because we've been burned by their absence. See `decisions.md` for the reasoning.
+
+### Fix Discipline
+- **First test = bug reproduction.** For every bug fix, the first test you write must reproduce the original bug. Not a test of the new code — a test that fails before the fix and passes after.
+- **Shared fixtures before unit tests.** When fixing cross-SDK behavior, add a fixture in `test-fixtures/` first. Both SDKs must pass it. Unit tests in each SDK are supplementary.
+- **Use the CLI after changing it.** After modifying any CLI command, manually run it once as a user would (`usepaso test --dry-run`, `usepaso validate`). Automated tests exercise functions in isolation — they don't catch UX problems like stderr spam or confusing error ordering.
+- **Read the full diff before declaring done.** Not the files — the diff. Ask: "what are the second-order effects of each change?"
+
+### Code Patterns
+- **Throw, don't exit.** Functions must throw errors (or return error objects), never call `process.exit()` / `sys.exit()` directly. The CLI entry point catches and exits. This keeps all logic testable.
+- **Exhaustive matching on every type discriminator.** Every `switch`/`if-elif` on a type field (`auth.type`, `input.in`, etc.) must have a `default`/`else` that throws or warns. Silent fallthrough is a bug.
+- **Keep side effects at the edges.** Functions like `buildRequest` must be pure — no reading env vars, no writing to stderr. Pass data in, get data out. The CLI command layer handles env vars and logging.
+- **Collect all errors, then report.** When validating user input (params, YAML fields), collect all errors into a list and report them together. Never exit on the first error.
+
+### Dual-SDK Parity
+- **Fixture-first development.** New features start with a shared YAML fixture in `test-fixtures/`. Implement in both SDKs until the fixture passes. This is the contract between the SDKs.
+- **Defaults must be identical.** If JS defaults `api_key` header to `Authorization`, Python must too. Grep for default values when reviewing parity.
+- **CI validates what users experience.** CI must run `usepaso validate` on all examples AND `usepaso test --dry-run` on at least one example with a path-prefix base_url. Validation alone doesn't catch runtime bugs.
+
 ## What NOT To Do
 
 - **Don't add a feature to one SDK only.** Both must have parity.
