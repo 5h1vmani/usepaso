@@ -188,8 +188,11 @@ Add to your Cursor MCP settings:
 See the `examples/` directory for real-world declarations:
 
 - **Sentry** — Error monitoring (6 capabilities)
-- **Stripe** — Payments (6 capabilities)
+- **Stripe** — Payments (6 capabilities, includes constraints)
 - **Linear** — Issue tracking (6 capabilities)
+- **GitHub** — Repository management (6 capabilities, includes constraints)
+- **Slack** — Messaging (6 capabilities, includes constraints)
+- **Twilio** — SMS and voice (6 capabilities, includes constraints)
 
 ## Spec Reference
 

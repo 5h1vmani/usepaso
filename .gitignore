@@ -18,4 +18,5 @@ venv/
 *.log
 coverage/
 .pytest_cache/
-audit
+audit/
+archive/
