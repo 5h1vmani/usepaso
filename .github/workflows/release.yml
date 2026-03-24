@@ -6,8 +6,46 @@ on:
       - 'v*'
 
 jobs:
+  version-check:
+    name: Validate tag matches source versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check versions match tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          JS_VERSION=$(node -p "require('./packages/paso-js/package.json').version")
+          PY_VERSION=$(python3 -c "
+          import re
+          text = open('packages/paso-py/pyproject.toml').read()
+          print(re.search(r'version\s*=\s*\"(.+?)\"', text).group(1))
+          ")
+
+          echo "Tag:     $TAG"
+          echo "JS SDK:  $JS_VERSION"
+          echo "PY SDK:  $PY_VERSION"
+
+          FAIL=0
+          if [ "$JS_VERSION" != "$TAG" ]; then
+            echo "::error::JS version ($JS_VERSION) does not match tag ($TAG)"
+            FAIL=1
+          fi
+          if [ "$PY_VERSION" != "$TAG" ]; then
+            echo "::error::PY version ($PY_VERSION) does not match tag ($TAG)"
+            FAIL=1
+          fi
+          if [ "$JS_VERSION" != "$PY_VERSION" ]; then
+            echo "::error::JS ($JS_VERSION) and PY ($PY_VERSION) versions differ"
+            FAIL=1
+          fi
+          if [ "$FAIL" -eq 1 ]; then
+            exit 1
+          fi
+          echo "All versions match: $TAG"
+
   test-js:
     name: Test Node.js
+    needs: [version-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +74,7 @@ jobs:
 
   test-py:
     name: Test Python
+    needs: [version-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
