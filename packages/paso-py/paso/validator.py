@@ -203,6 +203,18 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
                     message='path parameter must have in: path'
                 ))
 
+    # Validate constraints
+    if cap.constraints:
+        for ci, c in enumerate(cap.constraints):
+            fields = [f for f in [c.max_per_hour, c.max_per_request, c.max_value,
+                                   c.allowed_values, c.requires_field, c.description] if f is not None]
+            if len(fields) == 0:
+                errors.append(ValidationError(
+                    path=f'{prefix}.constraints[{ci}]',
+                    message='empty constraint object — add at least one field',
+                    level='warning',
+                ))
+
     # Validate output
     if cap.output:
         for field_name, output_obj in cap.output.items():

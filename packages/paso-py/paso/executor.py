@@ -152,6 +152,8 @@ async def execute_request(req: dict) -> dict:
                 content=req.get("body"),
             )
 
+            # Guard against very large responses. Only checks content-length header;
+            # chunked/streaming responses without this header bypass the limit.
             max_size = 10 * 1024 * 1024  # 10MB
             content_length = response.headers.get("content-length")
             if content_length and int(content_length) > max_size:

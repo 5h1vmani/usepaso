@@ -227,6 +227,19 @@ function validateCapability(
     }
   }
 
+  // Validate constraints
+  if (cap.constraints) {
+    cap.constraints.forEach((c, ci) => {
+      if (Object.keys(c).length === 0) {
+        errors.push({
+          path: `${prefix}.constraints[${ci}]`,
+          message: 'empty constraint object — add at least one field',
+          level: 'warning',
+        });
+      }
+    });
+  }
+
   // Validate output
   if (cap.output) {
     for (const [fieldName, output] of Object.entries(cap.output)) {

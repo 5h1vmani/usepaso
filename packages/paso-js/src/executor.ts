@@ -137,6 +137,8 @@ export async function executeRequest(req: ExecutionRequest): Promise<ExecutionRe
       fetchOptions.body = req.body;
     }
 
+    // Guard against very large responses. Only checks content-length header;
+    // chunked/streaming responses without this header bypass the limit.
     const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB
     const response = await fetch(req.url, fetchOptions);
     const contentLength = response.headers.get('content-length');
