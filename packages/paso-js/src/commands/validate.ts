@@ -63,7 +63,9 @@ export function registerValidate(program: Command): void {
       // Normal mode
       try {
         const decl = loadAndValidate(filePath);
-        console.log(`valid (${decl.service.name}, ${decl.capabilities.length} capabilities)`);
+        console.log(
+          `valid (${decl.service.name}, ${decl.capabilities.length} capabilities, 0 regrets)`,
+        );
       } catch (err) {
         console.error(`Error: ${err instanceof Error ? err.message : err}`);
         process.exit(1);

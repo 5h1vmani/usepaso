@@ -75,7 +75,7 @@ export function registerInit(program: Command): void {
               `  Note: ${result.totalOperations} operations found, capped at ${result.generatedCount}. Edit usepaso.yaml to add more.`,
             );
           }
-          console.log('Review the file, then run: usepaso validate');
+          console.log('Review the file. Adjust permissions. Then: usepaso validate');
         } catch (err) {
           console.error(
             `Failed to convert OpenAPI spec: ${err instanceof Error ? err.message : err}`,
@@ -88,7 +88,7 @@ export function registerInit(program: Command): void {
       const name = opts.name || 'MyService';
       const template = loadTemplate().replaceAll('__SERVICE_NAME__', name);
       writeFileSync(outPath, template, 'utf-8');
-      console.log(`Created usepaso.yaml for "${name}"`);
-      console.log('Edit the file to declare your API capabilities, then run: usepaso validate');
+      console.log(`Created usepaso.yaml for "${name}".`);
+      console.log('Declare your capabilities, then run: usepaso validate');
     });
 }

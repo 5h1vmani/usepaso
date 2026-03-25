@@ -160,6 +160,19 @@ These exist because we've been burned by their absence. See `decisions.md` for t
 - **Don't change validation rules without updating both validators AND the schema.**
 - **Don't add dependencies without good reason.** Both SDKs should stay lightweight.
 
+## Voice Rules (user-facing text)
+
+All CLI output, error messages, help strings, and READMEs follow these rules:
+
+- Say the fact. No adjectives you can't prove.
+- Errors: say what's wrong, say what to do, link to docs. No emoji. No "oops."
+- No hype words: "revolutionary," "seamless," "game-changing," "excited," "empower," "solution."
+- Periods over exclamation marks. Always.
+- Use "declare" (not "define" or "configure"), "agent-ready," "ship" (not "deploy" in casual contexts).
+- Short sentences. If you can say it shorter, do.
+- No em dashes. Use a comma, a period, or restructure the sentence.
+- Show, don't claim. Show the code or the number. Don't say "best."
+
 ## Conventions
 
 - **TypeScript:** ESLint + Prettier enforced. Single quotes, trailing commas, 100 char width.

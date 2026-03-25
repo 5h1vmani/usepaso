@@ -59,7 +59,8 @@ export function buildRequest(
     }
   }
 
-  const baseUrl = decl.service.base_url.replace(/\/+$/, '');
+  let baseUrl = decl.service.base_url;
+  while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
   const fullPath = path.startsWith('/') ? path : `/${path}`;
   const url = new URL(`${baseUrl}${fullPath}`);
   for (const [k, v] of Object.entries(queryParams)) {

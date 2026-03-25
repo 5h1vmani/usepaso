@@ -1,53 +1,46 @@
-# UsePaso
+# paso
+
+One paso. Every protocol.
+
+Make your API agent-ready in minutes, not weeks. Declare your capabilities once. UsePaso generates protocol-specific servers for MCP, A2A, and whatever comes next.
+
+Self-hosted. Open source. No lock-in.
+
+```bash
+# That's it. Seriously.
+$ npm install usepaso
+$ npx usepaso init --name "Sentry"
+  Created usepaso.yaml for "Sentry".
+
+$ npx usepaso serve
+  usepaso serving "Sentry" (6 capabilities). Agents welcome.
+```
 
 [![CI](https://github.com/5h1vmani/usepaso/actions/workflows/ci.yml/badge.svg)](https://github.com/5h1vmani/usepaso/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/usepaso)](https://www.npmjs.com/package/usepaso)
 [![PyPI](https://img.shields.io/pypi/v/usepaso)](https://pypi.org/project/usepaso/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-
-**Make your API agent-ready in minutes.**
-
-One YAML declaration. Every agent protocol. Open source.
-
-UsePaso is an SDK that lets any service declare what AI agents can do, with what permissions, under what constraints. Write a single `usepaso.yaml` file, and UsePaso generates a working MCP server (with A2A and more coming). No protocol expertise required.
 
 ## Quick Start
 
-### Node.js
-
 ```bash
 npm install usepaso
-npx usepaso init --name "MyService"
-# Edit usepaso.yaml to declare your capabilities
+npx usepaso init --name "Sentry"
+npx usepaso validate
 npx usepaso serve
 ```
 
-### Python
+Python works the same way:
 
 ```bash
 pip install usepaso
-usepaso init --name "MyService"
-# Edit usepaso.yaml to declare your capabilities
+usepaso init --name "Sentry"
+usepaso validate
 usepaso serve
-```
-
-That's it. Your API is now agent-accessible via MCP.
-
-### Programmatic Usage
-
-```typescript
-// Node.js
-import { parseFile, validate, generateMcpServer } from 'usepaso';
-```
-
-```python
-# Python — package name is "usepaso", import name is "paso"
-from paso import parse_file, validate
 ```
 
 ## What You Write
 
-A `usepaso.yaml` file that describes your API's capabilities:
+A `usepaso.yaml` file. It describes what agents can do with your API.
 
 ```yaml
 version: "1.0"
@@ -76,10 +69,6 @@ capabilities:
         required: true
         description: Project slug
         in: path
-      query:
-        type: string
-        description: "Search query (e.g., 'is:unresolved')"
-        in: query
 
   - name: resolve_issue
     description: Mark an issue as resolved
@@ -91,13 +80,11 @@ capabilities:
       issue_id:
         type: string
         required: true
-        description: The issue ID
         in: path
       status:
         type: enum
         required: true
         values: [resolved, unresolved, ignored]
-        description: New status
 
 permissions:
   read: [list_issues]
@@ -109,59 +96,62 @@ permissions:
 ```
 usepaso.yaml
     │
-    ├──→ MCP server (Claude, Cursor, any MCP client)
-    ├──→ A2A endpoint (coming soon)
-    └──→ Registry entry (coming soon)
+    ├── MCP server    (Claude, Cursor, any MCP client)
+    ├── A2A endpoint  (coming soon)
+    └── Registry      (coming soon)
 ```
 
-## CLI Commands
+Each capability becomes an MCP tool. When an agent calls it, UsePaso makes the HTTP request to your API with proper auth, parameters, and error handling. You don't write protocol code. You don't learn MCP. You declare what your API can do, and UsePaso handles the rest.
 
-| Command            | What it does                                      |
-| ------------------ | ------------------------------------------------- |
-| `usepaso init`     | Create a usepaso.yaml template                    |
-| `usepaso validate` | Check your declaration for errors                 |
-| `usepaso inspect`  | Preview what MCP tools would be generated         |
-| `usepaso test`     | Test a capability with a real HTTP request         |
-| `usepaso serve`    | Start an MCP server from your declaration         |
-
-### Options
+## Already Have an OpenAPI Spec?
 
 ```bash
-usepaso init --name "MyService"                        # Scaffold a template
-usepaso init --from-openapi ./openapi.json             # Generate from OpenAPI spec
-usepaso init --from-openapi https://api.example.com/openapi.json  # From URL
-usepaso validate -f ./my-api.yaml                      # Validate a specific file
-usepaso inspect -f ./my-api.yaml                       # Preview tools
-usepaso test list_issues -p org=acme -p project=web    # Test a capability live
-usepaso test list_issues -p org=acme --dry-run          # Preview the HTTP request
-usepaso serve -f ./my-api.yaml --verbose               # Serve with request logging
-usepaso serve -f ./my-api.yaml --watch                 # Notify on file changes
+npx usepaso init --from-openapi ./openapi.json
 ```
+
+UsePaso reads your spec and generates the declaration. Review it, adjust permissions, ship.
+
+Works with URLs too:
+
+```bash
+npx usepaso init --from-openapi https://api.example.com/openapi.json
+```
+
+## CLI
+
+| Command                       | What it does                             |
+| ----------------------------- | ---------------------------------------- |
+| `usepaso init`                | Scaffold a `usepaso.yaml` template       |
+| `usepaso init --from-openapi` | Generate from an OpenAPI spec            |
+| `usepaso validate`            | Check your declaration for errors        |
+| `usepaso inspect`             | Preview what MCP tools will be generated |
+| `usepaso test <capability>`   | Test a capability against the live API   |
+| `usepaso test --dry-run`      | Same thing, minus the consequences       |
+| `usepaso serve`               | Start an MCP server                      |
+| `usepaso serve --verbose`     | Serve with request logging               |
 
 ## Authentication
 
-Set the `USEPASO_AUTH_TOKEN` environment variable. UsePaso will include it in requests to your API based on the auth type in your declaration:
+Set `USEPASO_AUTH_TOKEN`. UsePaso includes it in requests based on the auth type in your declaration.
 
 ```bash
 export USEPASO_AUTH_TOKEN="your-api-token"
 usepaso serve
 ```
 
-## Using With MCP Clients
+## Connect to MCP Clients
 
 ### Claude Desktop
 
-Add to your Claude Desktop config (`claude_desktop_config.json`):
+Add to `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "my-service": {
+    "sentry": {
       "command": "npx",
       "args": ["usepaso", "serve", "-f", "/path/to/usepaso.yaml"],
-      "env": {
-        "USEPASO_AUTH_TOKEN": "your-token"
-      }
+      "env": { "USEPASO_AUTH_TOKEN": "your-token" }
     }
   }
 }
@@ -169,55 +159,49 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 
 ### Cursor
 
-Add to your Cursor MCP settings:
+Add to `.cursor/mcp.json`:
 
 ```json
 {
-  "my-service": {
+  "sentry": {
     "command": "npx",
     "args": ["usepaso", "serve", "-f", "/path/to/usepaso.yaml"],
-    "env": {
-      "USEPASO_AUTH_TOKEN": "your-token"
-    }
+    "env": { "USEPASO_AUTH_TOKEN": "your-token" }
   }
 }
 ```
 
 ## Examples
 
-See the `examples/` directory for real-world declarations:
+Real-world declarations in [`examples/`](examples/):
 
 - **Sentry** — Error monitoring (6 capabilities)
-- **Stripe** — Payments (6 capabilities, includes constraints)
+- **Stripe** — Payments with constraints (6 capabilities)
+- **GitHub** — Repository management (6 capabilities)
+- **Slack** — Messaging (6 capabilities)
+- **Twilio** — SMS and voice (6 capabilities)
 - **Linear** — Issue tracking (6 capabilities)
-- **GitHub** — Repository management (6 capabilities, includes constraints)
-- **Slack** — Messaging (6 capabilities, includes constraints)
-- **Twilio** — SMS and voice (6 capabilities, includes constraints)
 
-## Spec Reference
+## Programmatic Usage
 
-See [spec/usepaso-spec.md](spec/usepaso-spec.md) for the full declaration format.
+```typescript
+import { parseFile, validate, generateMcpServer } from "usepaso";
+```
+
+```python
+# Package name is "usepaso", import name is "paso"
+from paso import parse_file, validate
+```
+
+## Spec
+
+Full declaration format: [spec/usepaso-spec.md](spec/usepaso-spec.md)
 
 JSON Schema for editor autocomplete: [spec/usepaso.schema.json](spec/usepaso.schema.json)
 
-## Project Structure
-
-```
-usepaso/
-├── spec/                    # Capability declaration format spec + JSON Schema
-├── examples/                # Real-world usepaso.yaml examples + init template
-├── packages/
-│   ├── paso-js/             # Node.js SDK (TypeScript)
-│   └── paso-py/             # Python SDK
-├── CONTRIBUTING.md          # How to contribute
-├── AGENTS.md                # Instructions for AI coding agents
-├── decisions.md             # Technical decision log
-└── LICENSE                  # Apache 2.0
-```
-
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

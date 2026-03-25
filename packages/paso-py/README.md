@@ -1,12 +1,13 @@
-# UsePaso
+# usepaso
+
+One paso. Every protocol.
+
+Declare your API's agent capabilities once. UsePaso generates the MCP server. No protocol expertise required.
+
+Self-hosted. Open source. Apache 2.0.
 
 [![CI](https://github.com/5h1vmani/usepaso/actions/workflows/ci.yml/badge.svg)](https://github.com/5h1vmani/usepaso/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/usepaso)](https://pypi.org/project/usepaso/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/5h1vmani/usepaso/blob/main/LICENSE)
-
-**Make your API agent-ready in minutes.** One YAML declaration, every agent protocol.
-
-UsePaso lets any service declare what AI agents can do with their API. Write a `usepaso.yaml`, and UsePaso generates a working MCP server. No protocol expertise required.
 
 ## Install
 
@@ -23,18 +24,20 @@ usepaso init --name "MyService"
 # Or generate from an existing OpenAPI spec
 usepaso init --from-openapi ./openapi.json
 
-# Validate
+# Check it
 usepaso validate
 
 # Preview what MCP tools will be generated
 usepaso inspect
 
-# Test a capability
+# Test a capability (without the consequences)
 usepaso test list_issues -p org=acme -p project=web --dry-run
 
 # Start the MCP server
 usepaso serve
 ```
+
+That's it. Your API is agent-ready.
 
 ## What You Write
 
@@ -71,23 +74,19 @@ capabilities:
 
 ## What UsePaso Does With It
 
-```
-usepaso.yaml → MCP server (Claude, Cursor, any MCP client)
-```
+Each capability becomes an MCP tool. When an agent calls it, UsePaso makes the HTTP request to your API with proper auth, parameters, and error handling.
 
-Each capability becomes an MCP tool. When an agent calls a tool, UsePaso makes the real HTTP request to your API with proper auth, parameters, and error handling.
-
-## CLI Commands
+## CLI
 
 | Command | What it does |
 |---------|-------------|
 | `usepaso init` | Scaffold a `usepaso.yaml` template |
-| `usepaso init --from-openapi` | Generate from OpenAPI spec (file or URL) |
+| `usepaso init --from-openapi` | Generate from an OpenAPI spec |
 | `usepaso validate` | Check your declaration for errors |
 | `usepaso inspect` | Preview MCP tools that will be generated |
-| `usepaso test <capability>` | Test a capability with a real HTTP request |
-| `usepaso test <cap> --dry-run` | Preview the HTTP request without executing |
-| `usepaso serve` | Start an MCP server (stdio transport) |
+| `usepaso test <capability>` | Test a capability against the live API |
+| `usepaso test --dry-run` | Same thing, minus the consequences |
+| `usepaso serve` | Start an MCP server (stdio) |
 | `usepaso serve --verbose` | Serve with request logging |
 
 ## Programmatic Usage
@@ -100,9 +99,7 @@ decl = parse_file('usepaso.yaml')
 errors = validate(decl)
 ```
 
-## Connect to MCP Clients
-
-### Claude Desktop
+## Connect to Claude Desktop
 
 ```json
 {

@@ -35,9 +35,9 @@ export function registerServe(program: Command): void {
         }
 
         console.error(
-          `usepaso serving "${decl.service.name}" (${decl.capabilities.length} capabilities)`,
+          `usepaso serving "${decl.service.name}" (${decl.capabilities.length} capabilities). Agents welcome.`,
         );
-        console.error('Transport: stdio — waiting for MCP client...');
+        console.error('Transport: stdio. Waiting for an MCP client...');
 
         // Show MCP config snippet
         console.error(mcpConfigSnippet(filePath, decl.service.name));

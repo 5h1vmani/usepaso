@@ -35,7 +35,7 @@ export function coerceValue(raw: string, type: string, key: string): unknown {
 export function registerTest(program: Command): void {
   program
     .command('test <capability>')
-    .description('Test a capability by making the actual HTTP request (or --dry-run to preview)')
+    .description('Test a capability against the live API (or --dry-run, minus the consequences)')
     .option('-f, --file <path>', 'Path to usepaso.yaml', 'usepaso.yaml')
     .option(
       '-p, --param <key=value...>',

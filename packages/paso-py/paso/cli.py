@@ -156,7 +156,7 @@ def init(name, from_openapi):
             click.echo(f"  Auth:         {result['auth_type']}")
             if result['total_operations'] > result['generated_count']:
                 click.echo(f"  Note: {result['total_operations']} operations found, capped at {result['generated_count']}. Edit usepaso.yaml to add more.")
-            click.echo("Review the file, then run: usepaso validate")
+            click.echo("Review the file. Adjust permissions. Then: usepaso validate")
         except Exception as e:
             click.echo(f"Failed to convert OpenAPI spec: {e}", err=True)
             sys.exit(1)
@@ -165,8 +165,8 @@ def init(name, from_openapi):
     template = _load_template()
     content = template.replace('__SERVICE_NAME__', name)
     paso_file.write_text(content, encoding='utf-8')
-    click.echo(f'Created usepaso.yaml for "{name}"')
-    click.echo('Edit the file to declare your API capabilities, then run: usepaso validate')
+    click.echo(f'Created usepaso.yaml for "{name}".')
+    click.echo('Declare your capabilities, then run: usepaso validate')
 
 
 # ---- validate ----
@@ -212,7 +212,7 @@ def validate_cmd(file, as_json):
 
     decl = _load_and_validate(file)
     cap_count = len(decl.capabilities) if decl.capabilities else 0
-    click.echo(f"valid ({decl.service.name}, {cap_count} capabilities)")
+    click.echo(f"valid ({decl.service.name}, {cap_count} capabilities, 0 regrets)")
 
 
 # ---- inspect ----
@@ -331,7 +331,7 @@ def _coerce_value(raw: str, declared_type: str, key: str):
 @click.option('--dry-run', is_flag=True, help='Show the HTTP request without executing it')
 @click.option('--timeout', default=30, type=float, help='Request timeout in seconds (default: 30)')
 def test_cmd(capability, file, param, dry_run, timeout):
-    """Test a capability by making the actual HTTP request (or --dry-run to preview)."""
+    """Test a capability against the live API (or --dry-run, minus the consequences)."""
     from paso.executor import build_request, execute_request, format_error
 
     decl = _load_and_validate(file)
@@ -451,8 +451,8 @@ def serve(file, verbose, watch):
                 err=True
             )
 
-    click.echo(f'usepaso serving "{decl.service.name}" ({cap_count} capabilities)', err=True)
-    click.echo('Transport: stdio — waiting for MCP client...', err=True)
+    click.echo(f'usepaso serving "{decl.service.name}" ({cap_count} capabilities). Agents welcome.', err=True)
+    click.echo('Transport: stdio. Waiting for an MCP client...', err=True)
 
     # MCP config snippet
     click.echo(_mcp_config_snippet(file, decl.service.name), err=True)
