@@ -24,6 +24,9 @@ jobs:
       - name: Type check
         working-directory: packages/paso-js
         run: npx tsc --noEmit
+      - name: Build
+        working-directory: packages/paso-js
+        run: npm run build
       - name: Run tests
         working-directory: packages/paso-js
         run: npm test
