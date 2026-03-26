@@ -1,1 +1,0 @@
-cd packages/paso-js && npx lint-staged

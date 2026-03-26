@@ -86,7 +86,7 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Type check
         working-directory: packages/paso-py
-        run: python -m mypy paso/ --ignore-missing-imports
+        run: python -m mypy usepaso/ --ignore-missing-imports
       - name: Test
         working-directory: packages/paso-py
         run: pytest tests/ -v

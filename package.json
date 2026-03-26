@@ -1,0 +1,25 @@
+{
+  "private": true,
+  "description": "UsePaso monorepo — dev tooling only, not published",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "packages/paso-js/src/**/*.ts": [
+      "eslint --fix --config packages/paso-js/eslint.config.mjs",
+      "prettier --write"
+    ],
+    "packages/paso-js/tests/**/*.ts": [
+      "prettier --write"
+    ],
+    "packages/paso-py/**/*.py": [
+      "python3 -m py_compile"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}
