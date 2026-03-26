@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { coerceValue } from '../src/commands/test';
+import { coerceValue } from '../src/utils/coerce';
 
 describe('coerceValue', () => {
   describe('integer', () => {

@@ -1,5 +1,5 @@
 import pytest
-from paso.cli import _coerce_value
+from usepaso.utils.coerce import coerce_value as _coerce_value
 
 
 class TestCoerceInteger:

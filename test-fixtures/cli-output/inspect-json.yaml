@@ -1,0 +1,7 @@
+description: "usepaso inspect --json produces valid JSON with expected fields"
+file: "../../examples/sentry/usepaso.yaml"
+command: "inspect --json"
+expected_stdout_json:
+  service: "Sentry"
+  auth: "bearer"
+expected_exit_code: 0

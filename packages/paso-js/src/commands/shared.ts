@@ -3,10 +3,11 @@ import { existsSync } from 'fs';
 import { parseFile } from '../parser';
 import { validate } from '../validator';
 import { PasoDeclaration } from '../types';
+import { red, yellow, dim } from '../utils/color';
 
 export function loadAndValidate(filePath: string): PasoDeclaration {
   if (!existsSync(filePath)) {
-    console.error(`File not found: ${filePath}`);
+    console.error(red(`File not found: ${filePath}`) + dim(` Run usepaso init to create one.`));
     process.exit(1);
   }
   const decl = parseFile(filePath);
@@ -15,15 +16,15 @@ export function loadAndValidate(filePath: string): PasoDeclaration {
   const warnings = results.filter((e) => e.level === 'warning');
 
   if (errors.length > 0) {
-    console.error(`Validation failed with ${errors.length} error(s):`);
+    console.error(red(`Validation failed with ${errors.length} error(s):`));
     for (const err of errors) {
-      console.error(`  ${err.path}: ${err.message}`);
+      console.error(`  ${red(err.path)}: ${err.message}`);
     }
     process.exit(1);
   }
 
   for (const w of warnings) {
-    console.error(`  warning: ${w.path}: ${w.message}`);
+    console.error(`  ${yellow('warning')}: ${w.path}: ${w.message}`);
   }
 
   return decl;

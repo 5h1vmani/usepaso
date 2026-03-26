@@ -43,7 +43,8 @@ describe('shared test fixtures (cross-SDK parity)', () => {
       }
 
       try {
-        const req = buildRequest(cap, fixture.args || {}, decl);
+        const authToken = fixture.env?.USEPASO_AUTH_TOKEN;
+        const req = buildRequest(cap, fixture.args || {}, decl, authToken);
 
         expect(req.method).toBe(fixture.expected.method);
 

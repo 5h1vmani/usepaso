@@ -1,15 +1,16 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from paso.parser import parse_file, parse_string
-from paso.validator import validate
-from paso.types import PasoDeclaration, ValidationError
-from paso.executor import build_request, execute_request, format_error
+from usepaso.parser import parse_file, parse_string
+from usepaso.validator import validate
+from usepaso.types import PasoDeclaration, ValidationError
+from usepaso.executor import build_request, execute_request, format_error, format_structured_error
 
 __all__ = [
     "parse_file", "parse_string", "validate",
     "parse_and_validate", "parse_file_and_validate",
     "ParseResult",
+    "format_structured_error",
     "build_request", "execute_request", "format_error",
     "generate_mcp_server",
 ]
@@ -17,7 +18,7 @@ __all__ = [
 
 def generate_mcp_server(*args, **kwargs):
     """Generate a FastMCP server from a Paso declaration. Lazy-imports mcp dependency."""
-    from paso.generators.mcp import generate_mcp_server as _generate
+    from usepaso.generators.mcp import generate_mcp_server as _generate
     return _generate(*args, **kwargs)
 
 

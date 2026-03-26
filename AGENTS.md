@@ -28,7 +28,11 @@ usepaso/
 │   │   │   │   ├── validate.ts
 │   │   │   │   ├── inspect.ts
 │   │   │   │   ├── test.ts
-│   │   │   │   └── serve.ts
+│   │   │   │   ├── serve.ts
+│   │   │   │   └── doctor.ts
+│   │   │   ├── utils/
+│   │   │   │   ├── coerce.ts     # CLI value coercion (shared with tests)
+│   │   │   │   └── color.ts      # ANSI color utilities
 │   │   │   ├── parser.ts         # Parse usepaso.yaml → typed object
 │   │   │   ├── validator.ts      # Validate declaration against spec
 │   │   │   ├── executor.ts       # Build + execute HTTP requests (shared by test + serve)
@@ -39,8 +43,19 @@ usepaso/
 │   │   │   └── index.ts          # Public API exports
 │   │   └── tests/
 │   └── paso-py/                  # Python SDK
-│       ├── paso/
-│       │   ├── cli.py            # CLI (all commands in one file — see tech debt note inside)
+│       ├── usepaso/
+│       │   ├── cli.py            # CLI entry point (thin — wires commands)
+│       │   ├── commands/         # One file per CLI command
+│       │   │   ├── shared.py     # Shared helpers (load_and_validate, mcp_config_snippet)
+│       │   │   ├── init_cmd.py
+│       │   │   ├── validate_cmd.py
+│       │   │   ├── inspect_cmd.py
+│       │   │   ├── test_cmd.py
+│       │   │   ├── serve_cmd.py
+│       │   │   └── doctor_cmd.py
+│       │   ├── utils/
+│       │   │   ├── coerce.py     # CLI value coercion (shared with tests)
+│       │   │   └── color.py      # Color utilities (click.style wrapper)
 │       │   ├── parser.py
 │       │   ├── validator.py
 │       │   ├── executor.py
@@ -113,10 +128,14 @@ Both `usepaso test` and `usepaso serve` use the same executor module (`executor.
 ### 4. CLI Output Must Be Identical
 
 Both SDKs must produce the same CLI output for the same operation. If you change a message in one, change it in the other. Key formats:
-- `validate`: `valid (ServiceName, N capabilities)`
-- `serve`: `usepaso serving "ServiceName" (N capabilities)`
+- `validate`: `valid (ServiceName, N capabilities, 0 regrets)`
+- `validate --strict`: best-practice warnings listed after the valid line
+- `serve`: `usepaso serving "ServiceName" (N capabilities). Agents welcome.`
 - `test --dry-run`: `--- DRY RUN (no request will be made) ---`
+- `test --all --dry-run`: `ok <capName> <METHOD> <URL>` per capability, summary at end
 - `inspect`: Same table format in both
+- `doctor`: Same check names and pass/fail format in both
+- `completion`: Same shell scripts in both
 
 ### 5. Naming Convention
 
@@ -125,7 +144,7 @@ Both SDKs must produce the same CLI output for the same operation. If you change
 - Env var: `USEPASO_AUTH_TOKEN` (not `PASO_AUTH_TOKEN`)
 - CLI binary: `usepaso` (not `paso`)
 - npm package: `usepaso` → `import { ... } from 'usepaso'`
-- PyPI package: `usepaso` → `from paso import ...` (note: different import name — this is intentional, like Pillow/PIL)
+- PyPI package: `usepaso` → `from usepaso import ...`
 - Directory names `paso-js` and `paso-py` are internal — these are not user-facing
 - Type names use `Paso` prefix (e.g., `PasoDeclaration`, `PasoCapability`) — this is intentional, don't rename to `UsePaso*`
 
@@ -188,12 +207,13 @@ All CLI output, error messages, help strings, and READMEs follow these rules:
 2. Wire it in `src/cli.ts` with `registerYourCommand(program)`
 
 ### Python
-1. Add the command in `paso/cli.py` using the `@main.command('yourcommand')` decorator
-2. Follow the existing pattern (use `_load_and_validate` for file loading)
+1. Create `usepaso/commands/yourcommand_cmd.py` with a `register(cli_group)` function
+2. Wire it in `usepaso/cli.py` with `yourcommand_cmd.register(main)`
+3. Use `from usepaso.commands.shared import load_and_validate` for file loading
 
 ## How to Add a New Output Generator (e.g., A2A)
 
-1. Create `src/generators/a2a.ts` / `paso/generators/a2a.py`
+1. Create `src/generators/a2a.ts` / `usepaso/generators/a2a.py`
 2. The generator takes a `PasoDeclaration` and produces the protocol-specific output
 3. Use the shared `executor` for any HTTP logic
 4. Add a CLI command or flag to use it (e.g., `usepaso serve --protocol a2a`)

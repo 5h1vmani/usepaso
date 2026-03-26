@@ -117,18 +117,33 @@ Works with URLs too:
 npx usepaso init --from-openapi https://api.example.com/openapi.json
 ```
 
+## How It Works
+
+1. You write a `usepaso.yaml` describing your API's capabilities, permissions, and constraints.
+2. UsePaso parses it into a typed declaration and validates it against the spec.
+3. Each capability becomes an MCP tool with a Zod schema, description, and HTTP handler.
+4. When an agent calls a tool, UsePaso builds the HTTP request (auth, path params, query params, body) and proxies it to your real API.
+5. The response goes back to the agent. Errors get structured context (401 = auth hint, 429 = retry-after).
+
+No runtime dependency beyond the SDK. No protocol code to write. No lock-in.
+
 ## CLI
 
-| Command                       | What it does                             |
-| ----------------------------- | ---------------------------------------- |
-| `usepaso init`                | Scaffold a `usepaso.yaml` template       |
-| `usepaso init --from-openapi` | Generate from an OpenAPI spec            |
-| `usepaso validate`            | Check your declaration for errors        |
-| `usepaso inspect`             | Preview what MCP tools will be generated |
-| `usepaso test <capability>`   | Test a capability against the live API   |
-| `usepaso test --dry-run`      | Same thing, minus the consequences       |
-| `usepaso serve`               | Start an MCP server                      |
-| `usepaso serve --verbose`     | Serve with request logging               |
+| Command | What it does |
+| --- | --- |
+| `usepaso init` | Scaffold a `usepaso.yaml` template |
+| `usepaso init --from-openapi` | Generate from an OpenAPI spec |
+| `usepaso validate` | Check your declaration for errors |
+| `usepaso validate --strict` | Check for best practices (missing constraints, consent) |
+| `usepaso inspect` | Preview what MCP tools will be generated |
+| `usepaso test <capability>` | Test a capability against the live API |
+| `usepaso test --dry-run` | Same thing, minus the consequences |
+| `usepaso test --all --dry-run` | Verify all capabilities resolve correctly |
+| `usepaso serve` | Start an MCP server |
+| `usepaso serve --verbose` | Serve with request logging |
+| `usepaso doctor` | Check your setup end-to-end (file, auth, connectivity) |
+| `usepaso completion` | Output shell completion script (bash, zsh, fish) |
+| `usepaso version` | Print the version |
 
 ## Authentication
 
@@ -189,8 +204,7 @@ import { parseFile, validate, generateMcpServer } from "usepaso";
 ```
 
 ```python
-# Package name is "usepaso", import name is "paso"
-from paso import parse_file, validate
+from usepaso import parse_file, validate
 ```
 
 ## Spec
@@ -198,6 +212,27 @@ from paso import parse_file, validate
 Full declaration format: [spec/usepaso-spec.md](spec/usepaso-spec.md)
 
 JSON Schema for editor autocomplete: [spec/usepaso.schema.json](spec/usepaso.schema.json)
+
+## Troubleshooting
+
+**Error 401: Authentication failed.**
+`USEPASO_AUTH_TOKEN` is missing or wrong. Set it:
+```bash
+export USEPASO_AUTH_TOKEN="your-token"
+```
+Run `usepaso doctor` to verify.
+
+**File not found: usepaso.yaml.**
+You're in the wrong directory, or you haven't created one yet. Run `usepaso init`.
+
+**MCP client can't connect.**
+Check that usepaso is installed globally or use the full path in your MCP config. The `serve` command prints the exact config snippet you need.
+
+**OpenAPI import only generated 20 capabilities.**
+UsePaso caps at 20 capabilities per import to keep declarations manageable. Edit `usepaso.yaml` to add more manually, or remove ones you don't need and re-import.
+
+**Validation fails on generated YAML.**
+The OpenAPI converter handles common patterns but not every edge case. Run `usepaso validate` to see what's wrong, fix the YAML, and re-validate.
 
 ## Contributing
 

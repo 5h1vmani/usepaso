@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
-from paso.parser import parse_string, parse_file
-from paso.types import PasoDeclaration
+from usepaso.parser import parse_string, parse_file
+from usepaso.types import PasoDeclaration
 
 
 class TestParseString:

@@ -82,6 +82,9 @@ capabilities:
         required: true
         values: [resolved, unresolved, ignored]
         description: New status for the issue
+    constraints:
+      - max_per_hour: 100
+        description: Bulk status changes are rate-limited
 
   - name: assign_issue
     description: Assign an issue to a team member
@@ -128,6 +131,9 @@ capabilities:
         required: true
         description: The issue ID
         in: path
+    constraints:
+      - max_per_hour: 10
+        description: Deletion is rate-limited to prevent accidental mass removal
 
 permissions:
   read:

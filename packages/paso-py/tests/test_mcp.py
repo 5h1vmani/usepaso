@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from paso.generators.mcp import generate_mcp_server, _build_tool_description
-from paso.parser import parse_file
-from paso.types import (
+from usepaso.generators.mcp import generate_mcp_server, _build_tool_description
+from usepaso.parser import parse_file
+from usepaso.types import (
     PasoDeclaration, PasoService, PasoCapability,
     PasoInput, PasoPermissions, PasoConstraint, PasoAuth,
 )

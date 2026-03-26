@@ -4,8 +4,8 @@ from typing import Callable, Optional
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from paso.types import PasoDeclaration, PasoCapability
-from paso.executor import build_request, execute_request, format_error
+from usepaso.types import PasoDeclaration, PasoCapability
+from usepaso.executor import build_request, execute_request, format_structured_error
 
 
 LogCallback = Optional[Callable[[str, dict, PasoDeclaration], None]]
@@ -72,13 +72,12 @@ def generate_mcp_server(decl: PasoDeclaration, on_log: LogCallback = None) -> Fa
                 if on_log:
                     on_log(cap_ref.name, result, decl)
 
-                if result.get('error'):
-                    return format_error(result, decl, auth_token=auth_token)
-
-                if result.get('status') and result['status'] >= 400:
+                if result.get('error') or (result.get('status') and result['status'] >= 400):
+                    import json as _json
+                    structured = format_structured_error(result, decl, auth_token=auth_token)
                     body = result.get('body', '')
-                    msg = format_error(result, decl, auth_token=auth_token)
-                    return f"{msg}\n\nResponse body:\n{body}" if body else msg
+                    text = _json.dumps(structured)
+                    return f"{text}\n\nResponse body:\n{body}" if body else text
 
                 return result['body']
             return handler

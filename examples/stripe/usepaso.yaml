@@ -104,6 +104,10 @@ capabilities:
     constraints:
       - max_value: 99999999
         description: Maximum single charge is $999,999.99
+      - requires_field: currency
+        description: Currency is required when specifying an amount
+      - max_per_hour: 500
+        description: Payment creation is rate-limited
 
   - name: list_invoices
     description: List invoices, optionally filtered by customer

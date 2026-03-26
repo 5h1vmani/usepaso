@@ -3,6 +3,8 @@ import { resolve } from 'path';
 import { watchFile } from 'fs';
 import { loadAndValidate, mcpConfigSnippet } from './shared';
 import { serveMcp } from '../generators/mcp';
+import { green, cyan, yellow } from '../utils/color';
+import { redactUrl } from '../utils/redact';
 
 export function registerServe(program: Command): void {
   program
@@ -21,21 +23,30 @@ export function registerServe(program: Command): void {
         const authToken = process.env.USEPASO_AUTH_TOKEN;
         if (authToken !== undefined && authToken === '') {
           console.error(
-            `Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.`,
+            yellow(`Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.`),
           );
         }
         if (decl.service.auth) {
           if (decl.service.auth.type === 'none' && authToken) {
-            console.error(`Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN`);
+            console.error(yellow(`Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN`));
           } else if (decl.service.auth.type !== 'none' && !authToken) {
             console.error(
-              `Warning: auth type "${decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.`,
+              yellow(
+                `Warning: auth type "${decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.`,
+              ),
             );
           }
         }
 
+        // Security: warn if base_url uses plain HTTP
+        if (decl.service.base_url.startsWith('http://')) {
+          console.error(
+            yellow(`Warning: base_url uses http://. Auth tokens will be sent in plain text.`),
+          );
+        }
+
         console.error(
-          `usepaso serving "${decl.service.name}" (${decl.capabilities.length} capabilities). Agents welcome.`,
+          `${green('usepaso serving')} "${cyan(decl.service.name)}" (${decl.capabilities.length} capabilities). Agents welcome.`,
         );
         console.error('Transport: stdio. Waiting for an MCP client...');
 
@@ -58,8 +69,9 @@ export function registerServe(program: Command): void {
               if (result.error) {
                 console.error(`[${now}] ${capName} → ERROR: ${result.error}`);
               } else {
+                const safeUrl = redactUrl(result.request.url);
                 console.error(
-                  `[${now}] ${capName} → ${result.request.method} ${result.request.url} ← ${result.status} (${result.durationMs}ms)`,
+                  `[${now}] ${capName} → ${result.request.method} ${safeUrl} ← ${result.status} (${result.durationMs}ms)`,
                 );
               }
             }

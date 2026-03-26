@@ -66,11 +66,11 @@ These rules are now in AGENTS.md so both human and AI contributors follow them m
 
 ---
 
-### 2026-03-23: Python import name `paso` differs from package name `usepaso`
+### 2026-03-26: Python import name aligned with package name
 
-**Decision:** `pip install usepaso` but `from paso import ...`.
+**Decision:** `pip install usepaso` and `from usepaso import ...`. Both match now.
 
-**Why:** The internal Python module directory is `paso/`, which was created before the rename to `usepaso`. Renaming the module directory would break the import path and require renaming every internal import across all files and tests. This pattern is common in Python (Pillow → `import PIL`, beautifulsoup4 → `import bs4`). We document it clearly in README and AGENTS.md.
+**Why:** Previously `from paso import ...` (like Pillow/PIL). We renamed the internal module directory from `paso/` to `usepaso/` while we have zero users. Consistency everywhere: install name = import name = CLI name = brand.
 
 ---
 

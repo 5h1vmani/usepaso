@@ -1,6 +1,6 @@
 import re
 from urllib.parse import urlparse
-from paso.types import PasoDeclaration, PasoCapability, ValidationError
+from usepaso.types import PasoDeclaration, PasoCapability, ValidationError
 
 
 VALID_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']

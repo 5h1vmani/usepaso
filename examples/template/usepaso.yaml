@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://usepaso.dev/schema/v1.0
+# yaml-language-server: $schema=https://raw.githubusercontent.com/5h1vmani/usepaso/main/spec/usepaso.schema.json
 version: "1.0"
 
 service:
@@ -25,6 +25,66 @@ capabilities:
         type: string
         description: TODO — describe the output
 
+  # --- More patterns (uncomment and edit) ---
+
+  # GET with path and query parameters
+  # - name: get_item
+  #   description: Get a specific item by ID
+  #   method: GET
+  #   path: /items/{item_id}
+  #   permission: read
+  #   inputs:
+  #     item_id:
+  #       type: string
+  #       required: true
+  #       description: The item ID
+  #       in: path
+  #     fields:
+  #       type: string
+  #       description: Comma-separated fields to include
+  #       in: query
+
+  # POST with body parameters
+  # - name: create_item
+  #   description: Create a new item
+  #   method: POST
+  #   path: /items
+  #   permission: write
+  #   consent_required: true
+  #   inputs:
+  #     name:
+  #       type: string
+  #       required: true
+  #       description: Item name
+  #       in: body
+  #     status:
+  #       type: enum
+  #       values: [draft, active, archived]
+  #       default: draft
+  #       description: Initial status
+  #       in: body
+
+  # DELETE with constraints
+  # - name: delete_item
+  #   description: Delete an item permanently
+  #   method: DELETE
+  #   path: /items/{item_id}
+  #   permission: admin
+  #   consent_required: true
+  #   inputs:
+  #     item_id:
+  #       type: string
+  #       required: true
+  #       description: The item ID
+  #       in: path
+  #   constraints:
+  #     - max_per_hour: 10
+  #       description: Deletion is rate-limited
+
 permissions:
   read:
     - example_action
+  # write:
+  #   - create_item
+  # admin:
+  #   - delete_item

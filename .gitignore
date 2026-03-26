@@ -20,3 +20,5 @@ coverage/
 .pytest_cache/
 audit/
 archive/
+plans/
+.claude

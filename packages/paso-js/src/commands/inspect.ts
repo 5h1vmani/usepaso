@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import { parseFile } from '../parser';
 import { validate } from '../validator';
 import { loadAndValidate } from './shared';
+import { cyan, dim } from '../utils/color';
 
 export function registerInspect(program: Command): void {
   program
@@ -72,24 +73,31 @@ export function registerInspect(program: Command): void {
         const forbidden = new Set(decl.permissions?.forbidden || []);
         const tools = decl.capabilities.filter((c) => !forbidden.has(c.name));
 
-        console.log(`Service: ${decl.service.name}`);
+        console.log(`Service: ${cyan(decl.service.name)}`);
         console.log(`Tools:   ${tools.length}`);
         console.log(`Auth:    ${decl.service.auth?.type || 'none'}`);
         console.log('');
 
-        for (const tool of tools) {
+        for (let i = 0; i < tools.length; i++) {
+          const tool = tools[i];
+          const isLast = i === tools.length - 1;
+          const connector = i === 0 ? '┌' : isLast ? '└' : '├';
+          const cont = isLast ? ' ' : '│';
           const badge = tool.consent_required ? ' [consent required]' : '';
-          console.log(`  ${tool.name} (${tool.permission})${badge}`);
-          console.log(`    ${tool.method} ${tool.path}`);
-          console.log(`    ${tool.description}`);
+          console.log(
+            `  ${dim(connector)} ${cyan(tool.name)} ${dim(`(${tool.permission})`)}${badge}`,
+          );
+          console.log(`  ${dim(cont)} ${dim(`${tool.method} ${tool.path}`)}`);
+          console.log(`  ${dim(cont)} ${tool.description}`);
           if (tool.inputs) {
             const params = Object.entries(tool.inputs)
               .map(([k, v]) => `${k}${v.required ? '*' : ''}: ${v.type}`)
               .join(', ');
-            console.log(`    params: ${params}`);
+            console.log(`  ${dim(cont)} params: ${params}`);
           }
-          console.log('');
+          if (!isLast) console.log(`  ${dim('│')}`);
         }
+        console.log('');
 
         if (decl.permissions?.forbidden?.length) {
           console.log(`Forbidden: ${decl.permissions.forbidden.join(', ')}`);

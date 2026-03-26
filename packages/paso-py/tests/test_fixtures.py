@@ -6,8 +6,8 @@ from urllib.parse import urlparse, parse_qs
 import pytest
 import yaml
 
-from paso.parser import parse_string
-from paso.executor import build_request
+from usepaso.parser import parse_string
+from usepaso.executor import build_request
 
 FIXTURES_DIR = Path(__file__).parent / "../../../test-fixtures/build-request"
 
@@ -32,7 +32,8 @@ def test_shared_fixture(fixture, monkeypatch):
         for k, v in fixture["env"].items():
             monkeypatch.setenv(k, v)
 
-    req = build_request(cap, fixture.get("args", {}), decl)
+    auth_token = fixture.get("env", {}).get("USEPASO_AUTH_TOKEN")
+    req = build_request(cap, fixture.get("args", {}), decl, auth_token=auth_token)
     expected = fixture["expected"]
 
     assert req["method"] == expected["method"]

@@ -92,8 +92,7 @@ Each capability becomes an MCP tool. When an agent calls it, UsePaso makes the H
 ## Programmatic Usage
 
 ```python
-# Package name is "usepaso", import name is "paso"
-from paso import parse_file, validate
+from usepaso import parse_file, validate
 
 decl = parse_file('usepaso.yaml')
 errors = validate(decl)

@@ -14,6 +14,24 @@ export interface ExecutionResult {
   body: string;
   durationMs: number;
   error?: string;
+  retryAfterSeconds?: number;
+}
+
+export interface StructuredError {
+  error: true;
+  type:
+    | 'auth_failed'
+    | 'forbidden'
+    | 'not_found'
+    | 'rate_limited'
+    | 'server_error'
+    | 'network_error'
+    | 'client_error';
+  status: number | null;
+  message: string;
+  hint: string;
+  retry_after_seconds?: number;
+  request_url: string;
 }
 
 /**
@@ -77,7 +95,7 @@ export function buildRequest(
     if (decl.service.auth.type === 'none') {
       // Skip auth — notice is logged once at command startup, not per-request
     } else {
-      const token = authToken ?? process.env.USEPASO_AUTH_TOKEN;
+      const token = authToken;
       if (token) {
         const authType = decl.service.auth.type;
         const authHeader = decl.service.auth.header || 'Authorization';
@@ -189,12 +207,23 @@ export async function executeRequest(
       body = text;
     }
 
+    // Capture Retry-After header for 429 responses
+    let retryAfterSeconds: number | undefined;
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('retry-after');
+      if (retryAfter) {
+        const parsed = parseInt(retryAfter, 10);
+        retryAfterSeconds = isNaN(parsed) ? undefined : parsed;
+      }
+    }
+
     return {
       request: req,
       status: response.status,
       statusText: response.statusText,
       body,
       durationMs,
+      retryAfterSeconds,
     };
   } catch (error) {
     return {
@@ -222,7 +251,7 @@ export function formatError(
 
   if (result.status === 401) {
     const authType = decl.service.auth?.type || 'unknown';
-    const hasToken = !!(authToken ?? process.env.USEPASO_AUTH_TOKEN);
+    const hasToken = !!authToken;
     let msg = `Error 401: Authentication failed.`;
     if (!hasToken) {
       msg += `\n  → USEPASO_AUTH_TOKEN is not set. Set it with: export USEPASO_AUTH_TOKEN=your-token`;
@@ -242,7 +271,10 @@ export function formatError(
   }
 
   if (result.status === 429) {
-    return `Error 429: Rate limited. The API is throttling requests.\n  → Wait and try again, or check your rate limit constraints.`;
+    const retryHint = result.retryAfterSeconds
+      ? `Retry after ${result.retryAfterSeconds} seconds.`
+      : 'Wait and try again, or check your rate limit constraints.';
+    return `Error 429: Rate limited. ${retryHint}`;
   }
 
   if (result.status >= 500) {
@@ -250,4 +282,101 @@ export function formatError(
   }
 
   return `Error ${result.status} ${result.statusText || ''}: ${result.body}`;
+}
+
+/**
+ * Format a structured error for MCP tool responses.
+ * Returns a JSON-serializable object that agents can parse programmatically.
+ */
+export function formatStructuredError(
+  result: ExecutionResult,
+  decl: PasoDeclaration,
+  authToken?: string,
+): StructuredError {
+  const url = result.request.url;
+
+  if (result.error) {
+    return {
+      error: true,
+      type: 'network_error',
+      status: null,
+      message: result.error,
+      hint: 'Check your network connection and the service base_url.',
+      request_url: url,
+    };
+  }
+
+  const status = result.status || 0;
+
+  if (status === 401) {
+    const hasToken = !!authToken;
+    return {
+      error: true,
+      type: 'auth_failed',
+      status,
+      message: 'Authentication failed.',
+      hint: hasToken
+        ? 'USEPASO_AUTH_TOKEN was rejected. Check that it is valid and has the required scopes.'
+        : 'USEPASO_AUTH_TOKEN is not set.',
+      request_url: url,
+    };
+  }
+
+  if (status === 403) {
+    return {
+      error: true,
+      type: 'forbidden',
+      status,
+      message: 'Forbidden. Your token does not have permission for this action.',
+      hint: 'Check the required scopes/permissions for this endpoint.',
+      request_url: url,
+    };
+  }
+
+  if (status === 404) {
+    return {
+      error: true,
+      type: 'not_found',
+      status,
+      message: 'Not found.',
+      hint: 'Check that base_url and path are correct in your usepaso.yaml.',
+      request_url: url,
+    };
+  }
+
+  if (status === 429) {
+    const se: StructuredError = {
+      error: true,
+      type: 'rate_limited',
+      status,
+      message: 'Rate limited.',
+      hint: 'Wait and retry.',
+      request_url: url,
+    };
+    if (result.retryAfterSeconds) {
+      se.retry_after_seconds = result.retryAfterSeconds;
+      se.hint = `Retry after ${result.retryAfterSeconds} seconds.`;
+    }
+    return se;
+  }
+
+  if (status >= 500) {
+    return {
+      error: true,
+      type: 'server_error',
+      status,
+      message: `Server error (${status}).`,
+      hint: 'This is likely a problem on the API side, not with usepaso.',
+      request_url: url,
+    };
+  }
+
+  return {
+    error: true,
+    type: 'client_error',
+    status,
+    message: `Error ${status}.`,
+    hint: result.body || 'Unexpected error.',
+    request_url: url,
+  };
 }

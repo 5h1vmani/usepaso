@@ -1,0 +1,7 @@
+description: "usepaso validate --json produces valid JSON with expected fields"
+file: "../../examples/sentry/usepaso.yaml"
+command: "validate --json"
+expected_stdout_json:
+  valid: true
+  service: "Sentry"
+expected_exit_code: 0

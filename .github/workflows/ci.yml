@@ -106,7 +106,79 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Type check
         working-directory: packages/paso-py
-        run: python -m mypy paso/ --ignore-missing-imports
+        run: python -m mypy usepaso/ --ignore-missing-imports
+
+  parity:
+    name: Cross-SDK Output Parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install JS SDK
+        working-directory: packages/paso-js
+        run: npm ci && npm run build
+      - name: Install Python SDK
+        working-directory: packages/paso-py
+        run: pip install -e ".[dev]"
+      - name: Compare validate plain text output
+        run: |
+          JS_OUT=$(NO_COLOR=1 node packages/paso-js/dist/cli.js validate -f examples/sentry/usepaso.yaml 2>&1)
+          PY_OUT=$(NO_COLOR=1 python -m usepaso.cli validate -f examples/sentry/usepaso.yaml 2>&1)
+          if [ "$JS_OUT" != "$PY_OUT" ]; then
+            echo "PARITY FAILURE: validate (plain text)"
+            echo "JS: $JS_OUT"
+            echo "PY: $PY_OUT"
+            exit 1
+          fi
+          echo "validate (plain text): MATCH"
+      - name: Compare validate --json output
+        run: |
+          JS_OUT=$(node packages/paso-js/dist/cli.js validate -f examples/sentry/usepaso.yaml --json 2>/dev/null)
+          PY_OUT=$(python -m usepaso.cli validate -f examples/sentry/usepaso.yaml --json 2>/dev/null)
+          # Sort JSON keys for stable comparison
+          JS_SORTED=$(echo "$JS_OUT" | python -c "import sys,json; print(json.dumps(json.load(sys.stdin), sort_keys=True))")
+          PY_SORTED=$(echo "$PY_OUT" | python -c "import sys,json; print(json.dumps(json.load(sys.stdin), sort_keys=True))")
+          if [ "$JS_SORTED" != "$PY_SORTED" ]; then
+            echo "PARITY FAILURE: validate --json"
+            echo "JS: $JS_SORTED"
+            echo "PY: $PY_SORTED"
+            diff <(echo "$JS_SORTED" | python -m json.tool) <(echo "$PY_SORTED" | python -m json.tool) || true
+            exit 1
+          fi
+          echo "validate --json: MATCH"
+      - name: Compare inspect --json output
+        run: |
+          JS_OUT=$(node packages/paso-js/dist/cli.js inspect -f examples/sentry/usepaso.yaml --json 2>/dev/null)
+          PY_OUT=$(python -m usepaso.cli inspect -f examples/sentry/usepaso.yaml --json 2>/dev/null)
+          JS_SORTED=$(echo "$JS_OUT" | python -c "import sys,json; print(json.dumps(json.load(sys.stdin), sort_keys=True))")
+          PY_SORTED=$(echo "$PY_OUT" | python -c "import sys,json; print(json.dumps(json.load(sys.stdin), sort_keys=True))")
+          if [ "$JS_SORTED" != "$PY_SORTED" ]; then
+            echo "PARITY FAILURE: inspect --json"
+            echo "JS: $JS_SORTED"
+            echo "PY: $PY_SORTED"
+            diff <(echo "$JS_SORTED" | python -m json.tool) <(echo "$PY_SORTED" | python -m json.tool) || true
+            exit 1
+          fi
+          echo "inspect --json: MATCH"
+      - name: Compare test --dry-run output
+        run: |
+          JS_OUT=$(NO_COLOR=1 node packages/paso-js/dist/cli.js test list_issues -f examples/sentry/usepaso.yaml --dry-run --param organization_slug=acme --param project_slug=backend 2>&1 | grep -E "^(DRY RUN|  (GET|POST|PUT|DELETE|PATCH)|  https?://)" || true)
+          PY_OUT=$(NO_COLOR=1 python -m usepaso.cli test list_issues -f examples/sentry/usepaso.yaml --dry-run --param organization_slug=acme --param project_slug=backend 2>&1 | grep -E "^(DRY RUN|  (GET|POST|PUT|DELETE|PATCH)|  https?://)" || true)
+          if [ "$JS_OUT" != "$PY_OUT" ]; then
+            echo "PARITY FAILURE: test --dry-run"
+            echo "JS:"
+            echo "$JS_OUT"
+            echo "PY:"
+            echo "$PY_OUT"
+            diff <(echo "$JS_OUT") <(echo "$PY_OUT") || true
+            exit 1
+          fi
+          echo "test --dry-run: MATCH"
 
   validate-examples:
     name: Validate Examples

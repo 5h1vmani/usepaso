@@ -1,0 +1,9 @@
+description: "usepaso validate on a valid file produces identical output"
+file: "../../examples/sentry/usepaso.yaml"
+command: validate
+expected_stdout_contains:
+  - "valid"
+  - "Sentry"
+  - "capabilities"
+  - "0 regrets"
+expected_exit_code: 0

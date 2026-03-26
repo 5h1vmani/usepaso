@@ -1,0 +1,8 @@
+description: "usepaso test without args lists available capabilities"
+file: "../../examples/sentry/usepaso.yaml"
+command: "test"
+expected_stdout_contains:
+  - "Missing capability name"
+  - "Available capabilities"
+  - "list_issues"
+expected_exit_code: 0

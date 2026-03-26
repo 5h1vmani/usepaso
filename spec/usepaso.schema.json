@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://usepaso.dev/schema/v1.0",
+  "$id": "https://raw.githubusercontent.com/5h1vmani/usepaso/main/spec/usepaso.schema.json",
   "title": "UsePaso Declaration",
   "description": "Schema for usepaso.yaml — declares what AI agents can do with your API",
   "type": "object",

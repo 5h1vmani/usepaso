@@ -1,0 +1,7 @@
+description: "usepaso validate on missing file exits 1 with helpful error"
+file: "nonexistent.yaml"
+command: validate
+expected_stderr_contains:
+  - "not found"
+  - "usepaso init"
+expected_exit_code: 1

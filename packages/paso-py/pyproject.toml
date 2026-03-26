@@ -42,4 +42,4 @@ Issues = "https://github.com/5h1vmani/usepaso/issues"
 Changelog = "https://github.com/5h1vmani/usepaso/releases"
 
 [project.scripts]
-usepaso = "paso.cli:main"
+usepaso = "usepaso.cli:main"

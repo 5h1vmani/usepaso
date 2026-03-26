@@ -3,8 +3,8 @@ import json
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
-from paso.executor import build_request, execute_request, format_error
-from paso.types import (
+from usepaso.executor import build_request, execute_request, format_error, format_structured_error
+from usepaso.types import (
     PasoDeclaration, PasoService, PasoCapability,
     PasoInput, PasoAuth
 )
@@ -219,7 +219,7 @@ class TestExecuteRequest:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+        with patch("usepaso.executor.httpx.AsyncClient", return_value=mock_client):
             result = self._run(execute_request({
                 "method": "GET", "url": "https://api.example.com/items",
                 "headers": {"Accept": "application/json"},
@@ -237,7 +237,7 @@ class TestExecuteRequest:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+        with patch("usepaso.executor.httpx.AsyncClient", return_value=mock_client):
             result = self._run(execute_request({
                 "method": "GET", "url": "https://api.example.com/items",
                 "headers": {},
@@ -256,7 +256,7 @@ class TestExecuteRequest:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+        with patch("usepaso.executor.httpx.AsyncClient", return_value=mock_client):
             result = self._run(execute_request({
                 "method": "GET", "url": "https://api.example.com/large",
                 "headers": {},
@@ -277,7 +277,7 @@ class TestExecuteRequest:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+        with patch("usepaso.executor.httpx.AsyncClient", return_value=mock_client):
             result = self._run(execute_request({
                 "method": "GET", "url": "https://api.example.com/health",
                 "headers": {},
@@ -298,7 +298,7 @@ class TestExecuteRequest:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("paso.executor.httpx.AsyncClient", return_value=mock_client):
+        with patch("usepaso.executor.httpx.AsyncClient", return_value=mock_client):
             result = self._run(execute_request({
                 "method": "GET", "url": "https://api.example.com/missing",
                 "headers": {},
@@ -395,3 +395,73 @@ class TestFormatError4xx:
         assert "422" in combined
         assert "name is required" in combined
         assert "Response body:" in combined
+
+
+class TestFormatStructuredError:
+    def _decl(self):
+        return PasoDeclaration(
+            version="1.0",
+            service=PasoService(
+                name="Test", description="Test", base_url="https://api.example.com/v1",
+                auth=PasoAuth(type="bearer"),
+            ),
+            capabilities=[],
+        )
+
+    def _base_result(self):
+        return {
+            "request": {"method": "GET", "url": "https://api.example.com/v1/test", "headers": {}},
+            "body": "",
+            "duration_ms": 100,
+            "status": None,
+            "status_text": "",
+            "error": None,
+        }
+
+    def test_auth_failed_without_token(self):
+        result = {**self._base_result(), "status": 401}
+        err = format_structured_error(result, self._decl())
+        assert err["error"] is True
+        assert err["type"] == "auth_failed"
+        assert err["status"] == 401
+        assert "not set" in err["hint"]
+
+    def test_auth_failed_with_token(self):
+        result = {**self._base_result(), "status": 401}
+        err = format_structured_error(result, self._decl(), auth_token="bad-token")
+        assert err["type"] == "auth_failed"
+        assert "rejected" in err["hint"]
+
+    def test_forbidden(self):
+        result = {**self._base_result(), "status": 403}
+        err = format_structured_error(result, self._decl())
+        assert err["type"] == "forbidden"
+
+    def test_not_found(self):
+        result = {**self._base_result(), "status": 404}
+        err = format_structured_error(result, self._decl())
+        assert err["type"] == "not_found"
+        assert err["request_url"] == "https://api.example.com/v1/test"
+
+    def test_rate_limited(self):
+        result = {**self._base_result(), "status": 429}
+        err = format_structured_error(result, self._decl())
+        assert err["type"] == "rate_limited"
+
+    def test_rate_limited_with_retry_after(self):
+        result = {**self._base_result(), "status": 429, "retry_after_seconds": 30}
+        err = format_structured_error(result, self._decl())
+        assert err["type"] == "rate_limited"
+        assert err["retry_after_seconds"] == 30
+        assert "30 seconds" in err["hint"]
+
+    def test_server_error(self):
+        result = {**self._base_result(), "status": 500}
+        err = format_structured_error(result, self._decl())
+        assert err["type"] == "server_error"
+
+    def test_network_error(self):
+        result = {**self._base_result(), "error": "ECONNREFUSED"}
+        err = format_structured_error(result, self._decl())
+        assert err["type"] == "network_error"
+        assert err["status"] is None

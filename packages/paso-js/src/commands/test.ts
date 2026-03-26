@@ -2,39 +2,12 @@ import { Command } from 'commander';
 import { resolve } from 'path';
 import { loadAndValidate } from './shared';
 import { buildRequest, executeRequest, formatError } from '../executor';
-
-const INTEGER_RE = /^-?\d+$/;
-const NUMBER_RE = /^-?\d+(\.\d+)?$/;
-
-export function coerceValue(raw: string, type: string, key: string): unknown {
-  switch (type) {
-    case 'integer': {
-      if (!INTEGER_RE.test(raw)) {
-        throw new Error(`Parameter "${key}" must be an integer, got "${raw}"`);
-      }
-      return parseInt(raw, 10);
-    }
-    case 'number': {
-      if (!NUMBER_RE.test(raw)) {
-        throw new Error(`Parameter "${key}" must be a number, got "${raw}"`);
-      }
-      return parseFloat(raw);
-    }
-    case 'boolean':
-      if (raw === 'true') return true;
-      if (raw === 'false') return false;
-      throw new Error(`Parameter "${key}" must be true or false, got "${raw}"`);
-    case 'string':
-    case 'enum':
-      return raw;
-    default:
-      return raw;
-  }
-}
+import { coerceValue } from '../utils/coerce';
+import { green, cyan, dim } from '../utils/color';
 
 export function registerTest(program: Command): void {
   program
-    .command('test <capability>')
+    .command('test [capability]')
     .description('Test a capability against the live API (or --dry-run, minus the consequences)')
     .option('-f, --file <path>', 'Path to usepaso.yaml', 'usepaso.yaml')
     .option(
@@ -47,10 +20,61 @@ export function registerTest(program: Command): void {
       [],
     )
     .option('--dry-run', 'Show the HTTP request without executing it')
+    .option('--all', 'Test all capabilities (requires --dry-run)')
     .option('--timeout <seconds>', 'Request timeout in seconds', '30')
     .action(async (capabilityName, opts) => {
       try {
         const decl = loadAndValidate(resolve(opts.file));
+
+        // --all mode: dry-run all capabilities
+        if (opts.all) {
+          if (!opts.dryRun) {
+            console.error(
+              '--all requires --dry-run. Running all capabilities against a live API is not supported.',
+            );
+            process.exit(1);
+          }
+          const authToken = process.env.USEPASO_AUTH_TOKEN;
+          let passed = 0;
+          let failed = 0;
+          for (const cap of decl.capabilities) {
+            const args: Record<string, unknown> = {};
+            if (cap.inputs) {
+              for (const [name, input] of Object.entries(cap.inputs)) {
+                if (input.default !== undefined) {
+                  args[name] = input.default;
+                } else if (input.required) {
+                  args[name] =
+                    input.type === 'integer' ? 0 : input.type === 'boolean' ? false : `{${name}}`;
+                }
+              }
+            }
+            try {
+              const req = buildRequest(cap, args, decl, authToken);
+              console.log(`${green('ok')} ${cyan(cap.name)} ${dim(`${req.method} ${req.url}`)}`);
+              passed++;
+            } catch (e) {
+              console.error(`FAIL ${cap.name}: ${e instanceof Error ? e.message : e}`);
+              failed++;
+            }
+          }
+          console.log('');
+          console.log(
+            `${passed} passed${failed > 0 ? `, ${failed} failed` : ''}. ${decl.capabilities.length} capabilities total.`,
+          );
+          if (failed > 0) process.exit(1);
+          return;
+        }
+
+        // No capability specified — list available ones
+        if (!capabilityName) {
+          console.log('Missing capability name. Available capabilities:\n');
+          for (const c of decl.capabilities) {
+            console.log(`  ${cyan(c.name)} ${dim(`(${c.permission})`)}  ${dim(c.description)}`);
+          }
+          console.log(`\nUsage: usepaso test <capability> [--param key=value]`);
+          return;
+        }
 
         // Auth notices (once, not per-request)
         const authToken = process.env.USEPASO_AUTH_TOKEN;
@@ -115,7 +139,7 @@ export function registerTest(program: Command): void {
         const req = buildRequest(cap, args, decl, authToken);
 
         if (opts.dryRun) {
-          console.log('--- DRY RUN (no request will be made) ---');
+          console.log(dim('--- DRY RUN (no request will be made) ---'));
           console.log('');
           console.log(`${req.method} ${req.url}`);
           const token = authToken;
@@ -131,8 +155,8 @@ export function registerTest(program: Command): void {
           return;
         }
 
-        console.log(`Testing ${cap.name}...`);
-        console.log(`→ ${req.method} ${req.url}`);
+        console.log(`Testing ${cyan(cap.name)}...`);
+        console.log(dim(`→ ${req.method} ${req.url}`));
         if (req.body) console.log(`→ Body: ${req.body}`);
         console.log('');
 
@@ -144,7 +168,9 @@ export function registerTest(program: Command): void {
           process.exit(1);
         }
 
-        console.log(`← ${result.status} ${result.statusText} (${result.durationMs}ms)`);
+        console.log(
+          green(`← ${result.status} ${result.statusText}`) + dim(` (${result.durationMs}ms)`),
+        );
         console.log('');
 
         if (result.status && result.status >= 400) {

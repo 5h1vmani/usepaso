@@ -1,8 +1,8 @@
 import pytest
 from pathlib import Path
-from paso.parser import parse_file, parse_string
-from paso.validator import validate
-from paso.types import (
+from usepaso.parser import parse_file, parse_string
+from usepaso.validator import validate
+from usepaso.types import (
     PasoDeclaration, PasoService, PasoCapability,
     PasoInput, PasoAuth, PasoPermissions
 )
@@ -474,7 +474,7 @@ class TestValidateWarnings:
 
 class TestParseAndValidate:
     def test_valid_yaml_returns_declaration(self):
-        from paso import parse_and_validate
+        from usepaso import parse_and_validate
         yaml_content = """
 version: "1.0"
 service:
@@ -493,7 +493,7 @@ capabilities:
         assert isinstance(result.warnings, list)
 
     def test_invalid_yaml_raises(self):
-        from paso import parse_and_validate
+        from usepaso import parse_and_validate
         import pytest
         yaml_content = """
 version: "2.0"

@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { PasoDeclaration, PasoCapability, PasoInput } from '../types';
-import { buildRequest, executeRequest, ExecutionResult, formatError } from '../executor';
+import { buildRequest, executeRequest, ExecutionResult, formatStructuredError } from '../executor';
 
 export type LogCallback = (capName: string, result: ExecutionResult, decl: PasoDeclaration) => void;
 
@@ -31,16 +31,11 @@ export function generateMcpServer(decl: PasoDeclaration, onLog?: LogCallback): M
 
       if (onLog) onLog(cap.name, result, decl);
 
-      if (result.error) {
-        return {
-          content: [{ type: 'text' as const, text: formatError(result, decl, authToken) }],
-        };
-      }
-
-      if (result.status && result.status >= 400) {
+      if (result.error || (result.status && result.status >= 400)) {
+        const structured = formatStructuredError(result, decl, authToken);
         const text = result.body
-          ? `${formatError(result, decl, authToken)}\n\nResponse body:\n${result.body}`
-          : formatError(result, decl, authToken);
+          ? `${JSON.stringify(structured)}\n\nResponse body:\n${result.body}`
+          : JSON.stringify(structured);
         return {
           content: [{ type: 'text' as const, text }],
         };

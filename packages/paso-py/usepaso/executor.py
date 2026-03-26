@@ -4,14 +4,13 @@ Shared HTTP execution module used by both the MCP server and the test CLI comman
 
 import asyncio
 import json
-import os
 import time
 from typing import Any, Optional
 from urllib.parse import quote, urlencode
 
 import httpx
 
-from paso.types import PasoCapability, PasoDeclaration
+from usepaso.types import PasoCapability, PasoDeclaration
 
 
 def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration,
@@ -88,7 +87,7 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration,
         headers["Content-Type"] = "application/json"
 
     # Add authentication header
-    token = auth_token if auth_token is not None else os.environ.get("USEPASO_AUTH_TOKEN")
+    token = auth_token
     if decl.service.auth:
         if decl.service.auth.type == "none":
             pass  # Skip auth — notice is logged once at command startup, not per-request
@@ -169,6 +168,15 @@ async def execute_request(req: dict, client: Optional[httpx.AsyncClient] = None,
         result["status"] = response.status_code
         result["status_text"] = response.reason_phrase or ""
 
+        # Capture Retry-After header for 429 responses
+        if response.status_code == 429:
+            retry_after = response.headers.get("retry-after")
+            if retry_after:
+                try:
+                    result["retry_after_seconds"] = int(retry_after)
+                except ValueError:
+                    pass
+
         # Read body and check actual size (catches chunked responses too)
         raw_text = response.text
         if len(raw_text.encode("utf-8")) > max_size:
@@ -215,7 +223,7 @@ def format_error(result: dict, decl: PasoDeclaration,
     Returns:
         Formatted error message string
     """
-    token = auth_token if auth_token is not None else os.environ.get("USEPASO_AUTH_TOKEN")
+    token = auth_token
 
     # Handle connection errors
     if result["error"]:
@@ -245,9 +253,102 @@ def format_error(result: dict, decl: PasoDeclaration,
         return f"Error 404: Not found.\n  \u2192 Check that base_url and path are correct in your usepaso.yaml.\n  \u2192 URL was: {url}"
 
     if status == 429:
-        return "Error 429: Rate limited. The API is throttling requests.\n  \u2192 Wait and try again, or check your rate limit constraints."
+        retry_seconds = result.get("retry_after_seconds")
+        retry_hint = (f"Retry after {retry_seconds} seconds."
+                      if retry_seconds
+                      else "Wait and try again, or check your rate limit constraints.")
+        return f"Error 429: Rate limited. {retry_hint}"
 
     if status >= 500:
         return f"Error {status}: Server error from the API.\n  \u2192 This is likely a problem on the API side, not with usepaso."
 
     return f"Error {status} {result.get('status_text', '')}: {result.get('body', '')}"
+
+
+def format_structured_error(result: dict, decl: PasoDeclaration,
+                            auth_token: Optional[str] = None) -> dict:
+    """
+    Format a structured error for MCP tool responses.
+    Returns a dict that agents can parse programmatically.
+    Structure matches the JS SDK's formatStructuredError output.
+    """
+    url = result["request"]["url"]
+
+    if result.get("error"):
+        return {
+            "error": True,
+            "type": "network_error",
+            "status": None,
+            "message": result["error"],
+            "hint": "Check your network connection and the service base_url.",
+            "request_url": url,
+        }
+
+    status = result.get("status") or 0
+
+    if status == 401:
+        has_token = bool(auth_token)
+        return {
+            "error": True,
+            "type": "auth_failed",
+            "status": status,
+            "message": "Authentication failed.",
+            "hint": ("USEPASO_AUTH_TOKEN was rejected. Check that it is valid and has the required scopes."
+                     if has_token
+                     else "USEPASO_AUTH_TOKEN is not set."),
+            "request_url": url,
+        }
+
+    if status == 403:
+        return {
+            "error": True,
+            "type": "forbidden",
+            "status": status,
+            "message": "Forbidden. Your token does not have permission for this action.",
+            "hint": "Check the required scopes/permissions for this endpoint.",
+            "request_url": url,
+        }
+
+    if status == 404:
+        return {
+            "error": True,
+            "type": "not_found",
+            "status": status,
+            "message": "Not found.",
+            "hint": "Check that base_url and path are correct in your usepaso.yaml.",
+            "request_url": url,
+        }
+
+    if status == 429:
+        retry_seconds = result.get("retry_after_seconds")
+        se = {
+            "error": True,
+            "type": "rate_limited",
+            "status": status,
+            "message": "Rate limited.",
+            "hint": "Wait and retry.",
+            "request_url": url,
+        }
+        if retry_seconds:
+            se["retry_after_seconds"] = retry_seconds
+            se["hint"] = f"Retry after {retry_seconds} seconds."
+        return se
+
+    if status >= 500:
+        return {
+            "error": True,
+            "type": "server_error",
+            "status": status,
+            "message": f"Server error ({status}).",
+            "hint": "This is likely a problem on the API side, not with usepaso.",
+            "request_url": url,
+        }
+
+    return {
+        "error": True,
+        "type": "client_error",
+        "status": status,
+        "message": f"Error {status}.",
+        "hint": result.get("body") or "Unexpected error.",
+        "request_url": url,
+    }

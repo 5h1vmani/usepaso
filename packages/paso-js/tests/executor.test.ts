@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildRequest, executeRequest, formatError } from '../src/executor';
+import { buildRequest, executeRequest, formatError, formatStructuredError } from '../src/executor';
 import { PasoDeclaration } from '../src/types';
 
 function makeDecl(overrides: Partial<PasoDeclaration['service']> = {}): PasoDeclaration {
@@ -425,5 +425,75 @@ describe('formatError', () => {
     };
     const msg = formatError(result, decl);
     expect(msg).toContain('Request failed: ECONNREFUSED');
+  });
+});
+
+describe('formatStructuredError', () => {
+  const decl = makeDecl({ auth: { type: 'bearer' } });
+  const baseResult = {
+    request: { method: 'GET', url: 'https://api.example.com/v1/test', headers: {} },
+    body: '',
+    durationMs: 100,
+  };
+
+  it('returns auth_failed for 401 without token', () => {
+    const result = { ...baseResult, status: 401, statusText: 'Unauthorized' };
+    const err = formatStructuredError(result, decl);
+    expect(err.error).toBe(true);
+    expect(err.type).toBe('auth_failed');
+    expect(err.status).toBe(401);
+    expect(err.hint).toContain('USEPASO_AUTH_TOKEN is not set');
+  });
+
+  it('returns auth_failed for 401 with token', () => {
+    const result = { ...baseResult, status: 401, statusText: 'Unauthorized' };
+    const err = formatStructuredError(result, decl, 'bad-token');
+    expect(err.type).toBe('auth_failed');
+    expect(err.hint).toContain('rejected');
+  });
+
+  it('returns forbidden for 403', () => {
+    const result = { ...baseResult, status: 403, statusText: 'Forbidden' };
+    const err = formatStructuredError(result, decl);
+    expect(err.type).toBe('forbidden');
+  });
+
+  it('returns not_found for 404', () => {
+    const result = { ...baseResult, status: 404, statusText: 'Not Found' };
+    const err = formatStructuredError(result, decl);
+    expect(err.type).toBe('not_found');
+    expect(err.request_url).toBe('https://api.example.com/v1/test');
+  });
+
+  it('returns rate_limited for 429', () => {
+    const result = { ...baseResult, status: 429, statusText: 'Too Many Requests' };
+    const err = formatStructuredError(result, decl);
+    expect(err.type).toBe('rate_limited');
+  });
+
+  it('includes retry_after_seconds for 429 with header', () => {
+    const result = {
+      ...baseResult,
+      status: 429,
+      statusText: 'Too Many Requests',
+      retryAfterSeconds: 30,
+    };
+    const err = formatStructuredError(result, decl);
+    expect(err.type).toBe('rate_limited');
+    expect(err.retry_after_seconds).toBe(30);
+    expect(err.hint).toContain('30 seconds');
+  });
+
+  it('returns server_error for 500', () => {
+    const result = { ...baseResult, status: 500, statusText: 'Internal Server Error' };
+    const err = formatStructuredError(result, decl);
+    expect(err.type).toBe('server_error');
+  });
+
+  it('returns network_error for connection failures', () => {
+    const result = { ...baseResult, error: 'ECONNREFUSED' };
+    const err = formatStructuredError(result, decl);
+    expect(err.type).toBe('network_error');
+    expect(err.status).toBeNull();
   });
 });

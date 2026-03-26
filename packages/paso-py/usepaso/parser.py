@@ -1,5 +1,5 @@
 import yaml
-from paso.types import PasoDeclaration
+from usepaso.types import PasoDeclaration
 
 
 def parse_file(file_path: str) -> PasoDeclaration:
