@@ -10,18 +10,26 @@ UsePaso is an open-source SDK that lets any service declare what AI agents can d
 
 ```
 usepaso/
+├── .husky/                       # Git hooks (monorepo root)
+│   ├── pre-commit                # lint-staged: ESLint/Prettier (JS) + py_compile (PY)
+│   ├── commit-msg                # commitlint: conventional commits
+│   └── pre-push                  # tsc --noEmit: type check before push
 ├── spec/
-│   ├── usepaso-spec.md              # Human-readable spec (SSOT for the format)
+│   ├── usepaso-spec.md           # Human-readable spec (SSOT for the format)
 │   └── usepaso.schema.json       # JSON Schema (SSOT for validation rules)
 ├── examples/
 │   ├── template/usepaso.yaml     # Init template (SSOT — both CLIs read this)
 │   ├── sentry/usepaso.yaml
 │   ├── stripe/usepaso.yaml
+│   ├── github/usepaso.yaml
+│   ├── slack/usepaso.yaml
+│   ├── twilio/usepaso.yaml
 │   └── linear/usepaso.yaml
+├── test-fixtures/                # Shared CLI output fixtures for cross-SDK parity
 ├── packages/
 │   ├── paso-js/                  # Node.js SDK (TypeScript)
 │   │   ├── src/
-│   │   │   ├── cli.ts            # CLI entry point (thin — wires commands)
+│   │   │   ├── cli.ts            # CLI entry point (thin — wires commands + version/completion)
 │   │   │   ├── commands/         # One file per CLI command
 │   │   │   │   ├── shared.ts     # Shared helpers (loadAndValidate, mcpConfigSnippet)
 │   │   │   │   ├── init.ts
@@ -32,7 +40,8 @@ usepaso/
 │   │   │   │   └── doctor.ts
 │   │   │   ├── utils/
 │   │   │   │   ├── coerce.ts     # CLI value coercion (shared with tests)
-│   │   │   │   └── color.ts      # ANSI color utilities
+│   │   │   │   ├── color.ts      # ANSI color utilities (brand palette, true color)
+│   │   │   │   └── redact.ts     # URL redaction for verbose logging
 │   │   │   ├── parser.ts         # Parse usepaso.yaml → typed object
 │   │   │   ├── validator.ts      # Validate declaration against spec
 │   │   │   ├── executor.ts       # Build + execute HTTP requests (shared by test + serve)
@@ -44,7 +53,7 @@ usepaso/
 │   │   └── tests/
 │   └── paso-py/                  # Python SDK
 │       ├── usepaso/
-│       │   ├── cli.py            # CLI entry point (thin — wires commands)
+│       │   ├── cli.py            # CLI entry point (thin — wires commands + version/completion)
 │       │   ├── commands/         # One file per CLI command
 │       │   │   ├── shared.py     # Shared helpers (load_and_validate, mcp_config_snippet)
 │       │   │   ├── init_cmd.py
@@ -55,7 +64,8 @@ usepaso/
 │       │   │   └── doctor_cmd.py
 │       │   ├── utils/
 │       │   │   ├── coerce.py     # CLI value coercion (shared with tests)
-│       │   │   └── color.py      # Color utilities (click.style wrapper)
+│       │   │   ├── color.py      # Color utilities (brand palette, true color)
+│       │   │   └── redact.py     # URL redaction for verbose logging
 │       │   ├── parser.py
 │       │   ├── validator.py
 │       │   ├── executor.py
@@ -64,6 +74,8 @@ usepaso/
 │       │   ├── openapi.py
 │       │   └── types.py
 │       └── tests/
+├── package.json                  # Root monorepo tooling (husky, lint-staged, commitlint)
+├── commitlint.config.js          # Conventional commits config
 ├── AGENTS.md                     # This file — instructions for AI coding agents
 ├── CONTRIBUTING.md               # Human contributor guide
 ├── decisions.md                  # Technical decision log (why we built it this way)
@@ -72,6 +84,12 @@ usepaso/
 ```
 
 ## Build and Test
+
+### First-time setup (git hooks)
+
+```bash
+npm install          # at repo root — installs husky, lint-staged, commitlint
+```
 
 ### Node.js SDK
 

@@ -121,7 +121,7 @@ npx usepaso init --from-openapi https://api.example.com/openapi.json
 
 1. You write a `usepaso.yaml` describing your API's capabilities, permissions, and constraints.
 2. UsePaso parses it into a typed declaration and validates it against the spec.
-3. Each capability becomes an MCP tool with a Zod schema, description, and HTTP handler.
+3. Each capability becomes an MCP tool with a typed schema, description, and HTTP handler.
 4. When an agent calls a tool, UsePaso builds the HTTP request (auth, path params, query params, body) and proxies it to your real API.
 5. The response goes back to the agent. Errors get structured context (401 = auth hint, 429 = retry-after).
 

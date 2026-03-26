@@ -4,13 +4,21 @@ Thanks for your interest in contributing!
 
 ## Setup
 
+### Git hooks (required first)
+
+```bash
+npm install          # at repo root — installs husky, lint-staged, commitlint
+```
+
+This enables pre-commit (lint JS + PY), commit-msg (conventional commits), and pre-push (type check).
+
 ### Node.js SDK
 
 ```bash
 cd packages/paso-js
 npm install
+npm run build     # compile TypeScript
 npm test          # run tests
-npx tsc --noEmit  # type check
 ```
 
 ### Python SDK

@@ -83,11 +83,16 @@ Each capability becomes an MCP tool. When an agent calls it, UsePaso makes the H
 | `usepaso init` | Scaffold a `usepaso.yaml` template |
 | `usepaso init --from-openapi` | Generate from an OpenAPI spec |
 | `usepaso validate` | Check your declaration for errors |
+| `usepaso validate --strict` | Check for best practices (missing constraints, consent) |
 | `usepaso inspect` | Preview MCP tools that will be generated |
 | `usepaso test <capability>` | Test a capability against the live API |
 | `usepaso test --dry-run` | Same thing, minus the consequences |
+| `usepaso test --all --dry-run` | Verify all capabilities resolve correctly |
 | `usepaso serve` | Start an MCP server (stdio) |
 | `usepaso serve --verbose` | Serve with request logging |
+| `usepaso doctor` | Check your setup end-to-end |
+| `usepaso completion` | Output shell completion script (bash, zsh, fish) |
+| `usepaso version` | Print the version |
 
 ## Programmatic Usage
 
