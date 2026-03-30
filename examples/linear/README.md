@@ -1,4 +1,4 @@
-# Linear — UsePaso Example
+# Linear — paso Example
 
 Makes the Linear API agent-ready. Exposes issues, teams, comments, and status management via Linear's GraphQL API.
 

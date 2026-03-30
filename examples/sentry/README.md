@@ -1,4 +1,4 @@
-# Sentry — UsePaso Example
+# Sentry — paso Example
 
 Makes the Sentry API agent-ready. Exposes issue tracking, project listing, and issue management.
 

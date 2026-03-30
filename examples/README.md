@@ -1,4 +1,4 @@
-# UsePaso Examples
+# paso Examples
 
 Real-world `usepaso.yaml` declarations for popular APIs. Each example is a working declaration you can validate, test, and serve immediately.
 

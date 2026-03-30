@@ -1,4 +1,4 @@
-# GitHub — UsePaso Example
+# GitHub — paso Example
 
 Makes the GitHub REST API agent-ready. Exposes repos, issues, PRs, comments, and Actions workflows.
 

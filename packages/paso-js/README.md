@@ -1,8 +1,8 @@
-# usepaso
+# paso
 
-One paso. Every protocol.
+The agent-readiness toolkit for APIs.
 
-Declare your API's agent capabilities once. UsePaso generates the MCP server. No protocol expertise required.
+Declare your API's capabilities once. paso generates the MCP server. No protocol code required.
 
 Self-hosted. Open source. Apache 2.0.
 
@@ -72,9 +72,9 @@ capabilities:
         description: Item name
 ```
 
-## What UsePaso Does With It
+## What paso Does With It
 
-Each capability becomes an MCP tool. When an agent calls it, UsePaso makes the HTTP request to your API with proper auth, parameters, and error handling.
+Each capability becomes an MCP tool. When an agent calls it, paso makes the HTTP request to your API with proper auth, parameters, and error handling.
 
 ## CLI
 
@@ -120,7 +120,9 @@ const server = generateMcpServer(decl);
 
 ## Links
 
-- [Full documentation](https://github.com/5h1vmani/usepaso)
+- [Documentation](https://usepaso.dev/docs/getting-started/)
+- [Blog](https://usepaso.dev/blog/)
+- [Changelog](https://usepaso.dev/changelog/)
 - [Spec reference](https://github.com/5h1vmani/usepaso/blob/main/spec/usepaso-spec.md)
 - [Examples](https://github.com/5h1vmani/usepaso/tree/main/examples)
 - [Python SDK](https://pypi.org/project/usepaso/)

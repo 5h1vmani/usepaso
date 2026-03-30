@@ -1,4 +1,4 @@
-# Stripe — UsePaso Example
+# Stripe — paso Example
 
 Makes the Stripe API agent-ready. Exposes customers, payments, invoices, and refunds.
 

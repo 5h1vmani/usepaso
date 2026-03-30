@@ -4,7 +4,7 @@ This file is for AI coding agents (Claude Code, Cursor, Codex, Gemini, Windsurf,
 
 ## What This Project Is
 
-UsePaso is an open-source SDK that lets any service declare what AI agents can do with their API. Developers write a `usepaso.yaml` declaration, and the SDK generates a working MCP server. Two SDK implementations exist: Node.js (TypeScript) and Python. Both must behave identically.
+paso is an open-source SDK that lets any service declare what AI agents can do with their API. Developers write a `usepaso.yaml` declaration, and the SDK generates a working MCP server. Two SDK implementations exist: Node.js (TypeScript) and Python. Both must behave identically.
 
 ## Architecture
 
@@ -157,7 +157,7 @@ Both SDKs must produce the same CLI output for the same operation. If you change
 
 ### 5. Naming Convention
 
-- Product name: **UsePaso** (capital U, capital P in prose)
+- Product name: **paso** (always lowercase in prose)
 - Config file: `usepaso.yaml` (not `paso.yaml`)
 - Env var: `USEPASO_AUTH_TOKEN` (not `PASO_AUTH_TOKEN`)
 - CLI binary: `usepaso` (not `paso`)

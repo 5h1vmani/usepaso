@@ -1,4 +1,4 @@
-# Contributing to UsePaso
+# Contributing to paso
 
 Thanks for your interest in contributing!
 

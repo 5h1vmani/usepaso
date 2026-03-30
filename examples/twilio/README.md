@@ -1,4 +1,4 @@
-# Twilio — UsePaso Example
+# Twilio — paso Example
 
 Makes the Twilio REST API agent-ready. Exposes SMS, voice calls, phone numbers, and usage records.
 

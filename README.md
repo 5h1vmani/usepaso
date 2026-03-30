@@ -1,8 +1,8 @@
 # paso
 
-One paso. Every protocol.
+The agent-readiness toolkit for APIs.
 
-Make your API agent-ready in minutes, not weeks. Declare your capabilities once. UsePaso generates protocol-specific servers for MCP, A2A, and whatever comes next.
+Make your API agent-ready in minutes, not weeks. Declare your capabilities once. paso generates protocol-specific servers for MCP, A2A, and whatever comes next.
 
 Self-hosted. Open source. No lock-in.
 
@@ -91,7 +91,7 @@ permissions:
   write: [resolve_issue]
 ```
 
-## What UsePaso Does With It
+## What paso Does With It
 
 ```
 usepaso.yaml
@@ -101,7 +101,9 @@ usepaso.yaml
     └── Registry      (coming soon)
 ```
 
-Each capability becomes an MCP tool. When an agent calls it, UsePaso makes the HTTP request to your API with proper auth, parameters, and error handling. You don't write protocol code. You don't learn MCP. You declare what your API can do, and UsePaso handles the rest.
+Each capability becomes an MCP tool. When an agent calls it, paso makes the HTTP request to your API with proper auth, parameters, and error handling. You don't write protocol code. You don't learn MCP. You declare what your API can do, and paso handles the rest.
+
+Your API is agent-ready. One declaration. Every protocol.
 
 ## Already Have an OpenAPI Spec?
 
@@ -109,7 +111,7 @@ Each capability becomes an MCP tool. When an agent calls it, UsePaso makes the H
 npx usepaso init --from-openapi ./openapi.json
 ```
 
-UsePaso reads your spec and generates the declaration. Review it, adjust permissions, ship.
+paso reads your spec and generates the declaration. Review it, adjust permissions, ship.
 
 Works with URLs too:
 
@@ -120,9 +122,9 @@ npx usepaso init --from-openapi https://api.example.com/openapi.json
 ## How It Works
 
 1. You write a `usepaso.yaml` describing your API's capabilities, permissions, and constraints.
-2. UsePaso parses it into a typed declaration and validates it against the spec.
+2. paso parses it into a typed declaration and validates it against the spec.
 3. Each capability becomes an MCP tool with a typed schema, description, and HTTP handler.
-4. When an agent calls a tool, UsePaso builds the HTTP request (auth, path params, query params, body) and proxies it to your real API.
+4. When an agent calls a tool, paso builds the HTTP request (auth, path params, query params, body) and proxies it to your real API.
 5. The response goes back to the agent. Errors get structured context (401 = auth hint, 429 = retry-after).
 
 No runtime dependency beyond the SDK. No protocol code to write. No lock-in.
@@ -147,7 +149,7 @@ No runtime dependency beyond the SDK. No protocol code to write. No lock-in.
 
 ## Authentication
 
-Set `USEPASO_AUTH_TOKEN`. UsePaso includes it in requests based on the auth type in your declaration.
+Set `USEPASO_AUTH_TOKEN`. paso includes it in requests based on the auth type in your declaration.
 
 ```bash
 export USEPASO_AUTH_TOKEN="your-api-token"
@@ -229,7 +231,7 @@ You're in the wrong directory, or you haven't created one yet. Run `usepaso init
 Check that usepaso is installed globally or use the full path in your MCP config. The `serve` command prints the exact config snippet you need.
 
 **OpenAPI import only generated 20 capabilities.**
-UsePaso caps at 20 capabilities per import to keep declarations manageable. Edit `usepaso.yaml` to add more manually, or remove ones you don't need and re-import.
+paso caps at 20 capabilities per import to keep declarations manageable. Edit `usepaso.yaml` to add more manually, or remove ones you don't need and re-import.
 
 **Validation fails on generated YAML.**
 The OpenAPI converter handles common patterns but not every edge case. Run `usepaso validate` to see what's wrong, fix the YAML, and re-validate.

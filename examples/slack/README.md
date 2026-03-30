@@ -1,4 +1,4 @@
-# Slack — UsePaso Example
+# Slack — paso Example
 
 Makes the Slack Web API agent-ready. Exposes channels, messages, reactions, search, and user info.
 
