@@ -3,21 +3,30 @@ import { resolve } from 'path';
 import { watchFile } from 'fs';
 import { loadAndValidate, mcpConfigSnippet } from './shared';
 import { serveMcp } from '../generators/mcp';
-import { green, cyan, yellow } from '../utils/color';
+import { green, cyan, yellow, dim } from '../utils/color';
 import { redactUrl } from '../utils/redact';
+import { loadEnvFile } from '../utils/env';
 
 export function registerServe(program: Command): void {
   program
     .command('serve')
     .description('Start an MCP server from a usepaso.yaml declaration')
     .option('-f, --file <path>', 'Path to usepaso.yaml', 'usepaso.yaml')
+    .option('--env <path>', 'Path to .env file (default: .env next to usepaso.yaml)')
     .option('-v, --verbose', 'Log all requests to stderr')
     .option('-w, --watch', 'Notify when usepaso.yaml changes (requires manual restart)')
+    .option('--strict', 'Enforce consent gates server-side (for headless/untrusted agents)')
     .action(async (opts) => {
       const filePath = resolve(opts.file);
 
       try {
         const decl = loadAndValidate(filePath);
+
+        // Load .env file if present (does not override existing env vars)
+        const loaded = loadEnvFile(filePath, opts.env);
+        if (loaded) {
+          console.error(dim(`Loaded environment from ${opts.env || '.env'}`));
+        }
 
         // Auth notices (logged once at startup, not per-request)
         const authToken = process.env.USEPASO_AUTH_TOKEN;
@@ -28,7 +37,7 @@ export function registerServe(program: Command): void {
         }
         if (decl.service.auth) {
           if (decl.service.auth.type === 'none' && authToken) {
-            console.error(yellow(`Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN`));
+            console.error(yellow(`Note: auth.type is "none", ignoring USEPASO_AUTH_TOKEN`));
           } else if (decl.service.auth.type !== 'none' && !authToken) {
             console.error(
               yellow(
@@ -45,13 +54,17 @@ export function registerServe(program: Command): void {
           );
         }
 
+        if (opts.strict) {
+          console.error(yellow('Strict mode: consent-gated tools require two-phase confirmation.'));
+        }
+
         console.error(
           `${green('usepaso serving')} "${cyan(decl.service.name)}" (${decl.capabilities.length} capabilities). Agents welcome.`,
         );
         console.error('Transport: stdio. Waiting for an MCP client...');
 
         // Show MCP config snippet
-        console.error(mcpConfigSnippet(filePath, decl.service.name));
+        console.error(mcpConfigSnippet(decl.service.name));
         console.error('');
 
         // Verbose logging callback
@@ -85,7 +98,7 @@ export function registerServe(program: Command): void {
           });
         }
 
-        await serveMcp(decl, onLog);
+        await serveMcp(decl, { onLog, strict: opts.strict });
       } catch (err) {
         console.error(`Failed to start: ${err instanceof Error ? err.message : err}`);
         process.exit(1);

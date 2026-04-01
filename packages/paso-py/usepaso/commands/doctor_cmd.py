@@ -6,23 +6,22 @@ import click
 
 from usepaso.parser import parse_file
 from usepaso.validator import validate
-from usepaso.utils.color import green, red, cyan, dim
+from usepaso.utils.color import green, red, cyan, dim, yellow
+from usepaso.utils.env import load_env_file, is_env_tracked_by_git
 
 
 def register(cli_group):
     @cli_group.command()
     @click.option('--file', '-f', default='usepaso.yaml', help='Path to usepaso.yaml file')
-    def doctor(file):
+    @click.option('--env', 'env_file', default=None, help='Path to .env file (default: .env next to usepaso.yaml)')
+    def doctor(file, env_file):
         """Check your usepaso setup for common issues."""
         file_path = str(Path(file).resolve()) if not Path(file).is_absolute() else file
-        passed = 0
         failed = 0
 
         def ok(label, detail=None):
-            nonlocal passed
             suffix = f" {dim(f'({detail})')}" if detail else ""
             click.echo(f"  {green('ok')}   {label}{suffix}", err=True)
-            passed += 1
 
         def fail(label, hint):
             nonlocal failed
@@ -35,7 +34,7 @@ def register(cli_group):
         click.echo('', err=True)
 
         # 1. File exists
-        if not Path(file).exists():
+        if not Path(file_path).exists():
             fail('usepaso.yaml found', 'Run usepaso init to create one.')
             click.echo('', err=True)
             click.echo(f'{failed} check failed.', err=True)
@@ -45,7 +44,7 @@ def register(cli_group):
         # 2. YAML parses
         decl = None
         try:
-            decl = parse_file(file)
+            decl = parse_file(file_path)
             ok('YAML parses correctly')
         except Exception as e:
             fail('YAML parses correctly', str(e))
@@ -64,7 +63,27 @@ def register(cli_group):
             cap_count = len(decl.capabilities) if decl.capabilities else 0
             ok('Validation passes', f'{cap_count} capabilities{warn_suffix}')
 
-        # 4. Auth token
+        # 4. .env file
+        directory = str(Path(file_path).parent)
+        env_path = Path(env_file) if env_file else Path(directory) / '.env'
+        if env_path.exists():
+            load_env_file(file_path, env_file)
+            ok('.env file found', str(env_path) if env_file else None)
+            if is_env_tracked_by_git(str(env_path.parent)):
+                click.echo(f"  {yellow('WARN')} .env is tracked by git. Run: git rm --cached .env", err=True)
+            # Check file permissions on Unix (skip on Windows)
+            if sys.platform != 'win32':
+                try:
+                    mode = env_path.stat().st_mode
+                    others_read = mode & 0o004
+                    if others_read:
+                        click.echo(f"  {yellow('WARN')} .env is world-readable. Run: chmod 600 .env", err=True)
+                except Exception:
+                    pass
+        else:
+            ok('.env file', 'not found, using environment variables')
+
+        # 5. Auth token
         auth_type = decl.service.auth.type if decl.service and decl.service.auth else None
         token = os.environ.get('USEPASO_AUTH_TOKEN')
         if auth_type and auth_type != 'none':
@@ -78,14 +97,14 @@ def register(cli_group):
         else:
             ok('Auth', 'type is "none", no token needed')
 
-        # 5. Base URL reachable
+        # 6. Base URL reachable
         base_url = decl.service.base_url if decl.service else None
         if base_url:
             try:
                 import httpx
                 import time
                 start = time.time()
-                resp = httpx.head(base_url, timeout=5.0)
+                httpx.head(base_url, timeout=5.0)
                 ms = int((time.time() - start) * 1000)
                 ok('Base URL reachable', f'{base_url}, {ms}ms')
             except Exception:

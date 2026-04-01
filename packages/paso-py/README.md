@@ -80,7 +80,8 @@ Each capability becomes an MCP tool. When an agent calls it, paso makes the HTTP
 
 | Command | What it does |
 |---------|-------------|
-| `usepaso init` | Scaffold a `usepaso.yaml` template |
+| `usepaso init` | Scaffold a `usepaso.yaml` template (JSONPlaceholder example) |
+| `usepaso init --blank` | Scaffold a blank template |
 | `usepaso init --from-openapi` | Generate from an OpenAPI spec |
 | `usepaso validate` | Check your declaration for errors |
 | `usepaso validate --strict` | Check for best practices (missing constraints, consent) |
@@ -89,7 +90,10 @@ Each capability becomes an MCP tool. When an agent calls it, paso makes the HTTP
 | `usepaso test --dry-run` | Same thing, minus the consequences |
 | `usepaso test --all --dry-run` | Verify all capabilities resolve correctly |
 | `usepaso serve` | Start an MCP server (stdio) |
+| `usepaso serve --strict` | Serve with consent gates enforced (two-phase confirmation) |
 | `usepaso serve --verbose` | Serve with request logging |
+| `usepaso connect <client>` | Wire this server into an MCP client config (claude-desktop, cursor, vscode, windsurf) |
+| `usepaso disconnect <client>` | Remove from an MCP client config |
 | `usepaso doctor` | Check your setup end-to-end |
 | `usepaso completion` | Output shell completion script (bash, zsh, fish) |
 | `usepaso version` | Print the version |
@@ -103,7 +107,16 @@ decl = parse_file('usepaso.yaml')
 errors = validate(decl)
 ```
 
-## Connect to Claude Desktop
+## Connect to MCP Clients
+
+```bash
+usepaso connect claude-desktop
+usepaso connect cursor
+usepaso connect vscode
+usepaso connect windsurf
+```
+
+Or add manually to your client config:
 
 ```json
 {

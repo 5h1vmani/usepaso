@@ -7,7 +7,7 @@ import re
 from typing import Optional
 import yaml
 
-MAX_CAPABILITIES = 20
+DEFAULT_MAX_CAPABILITIES = 20
 HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete']
 
 
@@ -126,7 +126,7 @@ def resolve_refs(obj, root, _resolving=None):
             # Circular ref detection
             if ref in _resolving:
                 import sys
-                print(f"Warning: circular $ref detected at {ref} — using placeholder", file=sys.stderr)
+                print(f"Warning: circular $ref detected at {ref}. Using placeholder", file=sys.stderr)
                 return {"type": "object", "description": f"(circular reference to {ref})"}
 
             path_parts = ref[2:].split('/')
@@ -237,7 +237,7 @@ def build_output(operation: dict):
     return output if output else None
 
 
-def generate_from_openapi(openapi_spec: dict) -> dict:
+def generate_from_openapi(openapi_spec: dict, max_capabilities: int = DEFAULT_MAX_CAPABILITIES) -> dict:
     """
     Generate a usepaso.yaml from an OpenAPI 3.x spec.
 
@@ -293,11 +293,11 @@ def generate_from_openapi(openapi_spec: dict) -> dict:
     for path_str, path_item in paths.items():
         if not path_item:
             continue
-        if len(capabilities) >= MAX_CAPABILITIES:
+        if len(capabilities) >= max_capabilities:
             break
 
         for method in HTTP_METHODS:
-            if len(capabilities) >= MAX_CAPABILITIES:
+            if len(capabilities) >= max_capabilities:
                 break
 
             operation = path_item.get(method)

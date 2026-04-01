@@ -1,0 +1,25 @@
+description: "DELETE without consent_required triggers strict-mode warning"
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: https://api.example.com
+  capabilities:
+    - name: delete_item
+      description: Delete an item
+      method: DELETE
+      path: /items/{id}
+      permission: write
+      inputs:
+        id:
+          type: integer
+          required: true
+          description: Item ID
+          in: path
+
+expected_warnings: []
+expected_errors: []
+strict_warnings:
+  - message_contains: "DELETE without consent_required"

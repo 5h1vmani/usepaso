@@ -7,6 +7,9 @@ const VALID_OUTPUT_TYPES = ['string', 'integer', 'number', 'boolean', 'object', 
 const VALID_AUTH_TYPES = ['api_key', 'bearer', 'oauth2', 'none'];
 const VALID_IN_VALUES = ['query', 'path', 'body', 'header'];
 const SNAKE_CASE_RE = /^[a-z][a-z0-9_]*$/;
+const MAX_NAME_LENGTH = 100;
+const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_URL_LENGTH = 2000;
 
 /**
  * Validate a parsed PasoDeclaration against the spec.
@@ -28,19 +31,42 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
   } else {
     if (!decl.service.name) {
       errors.push({ path: 'service.name', message: 'service.name is required' });
+    } else if (decl.service.name.length > MAX_NAME_LENGTH) {
+      errors.push({
+        path: 'service.name',
+        message: `service.name exceeds ${MAX_NAME_LENGTH} characters`,
+      });
     }
     if (!decl.service.description) {
       errors.push({ path: 'service.description', message: 'service.description is required' });
+    } else if (decl.service.description.length > MAX_DESCRIPTION_LENGTH) {
+      errors.push({
+        path: 'service.description',
+        message: `service.description exceeds ${MAX_DESCRIPTION_LENGTH} characters`,
+      });
     }
     if (!decl.service.base_url) {
       errors.push({ path: 'service.base_url', message: 'service.base_url is required' });
+    } else if (decl.service.base_url.length > MAX_URL_LENGTH) {
+      errors.push({
+        path: 'service.base_url',
+        message: `service.base_url exceeds ${MAX_URL_LENGTH} characters`,
+      });
     } else {
       try {
         const parsed = new URL(decl.service.base_url);
         if (parsed.protocol === 'http:') {
           errors.push({
             path: 'service.base_url',
-            message: 'base_url uses http:// — consider https:// to protect auth tokens in transit',
+            message: 'base_url uses http://. Consider https:// to protect auth tokens in transit',
+            level: 'warning',
+          });
+        }
+        if (isPrivateHost(parsed.hostname)) {
+          errors.push({
+            path: 'service.base_url',
+            message:
+              'base_url points to a private/internal address. If this YAML was shared with you, verify the URL before running usepaso serve.',
             level: 'warning',
           });
         }
@@ -67,7 +93,7 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
     if (decl.capabilities.length === 0) {
       errors.push({
         path: 'capabilities',
-        message: 'capabilities array is empty — MCP server will have no tools',
+        message: 'capabilities array is empty. MCP server will have no tools',
         level: 'warning',
       });
     }
@@ -88,7 +114,7 @@ export function validate(decl: PasoDeclaration): ValidationError[] {
       if (list && list.length === 0) {
         errors.push({
           path: `permissions.${tier}`,
-          message: `empty array — remove it or add capability names`,
+          message: `empty array. Remove it or add capability names`,
           level: 'warning',
         });
       }
@@ -143,6 +169,12 @@ function validateCapability(
   if (!cap.name) {
     errors.push({ path: `${prefix}.name`, message: 'name is required' });
   } else {
+    if (cap.name.length > MAX_NAME_LENGTH) {
+      errors.push({
+        path: `${prefix}.name`,
+        message: `name exceeds ${MAX_NAME_LENGTH} characters`,
+      });
+    }
     if (!SNAKE_CASE_RE.test(cap.name)) {
       errors.push({ path: `${prefix}.name`, message: `"${cap.name}" must be snake_case` });
     }
@@ -154,6 +186,11 @@ function validateCapability(
 
   if (!cap.description) {
     errors.push({ path: `${prefix}.description`, message: 'description is required' });
+  } else if (cap.description.length > MAX_DESCRIPTION_LENGTH) {
+    errors.push({
+      path: `${prefix}.description`,
+      message: `description exceeds ${MAX_DESCRIPTION_LENGTH} characters`,
+    });
   }
 
   if (!cap.method) {
@@ -167,6 +204,8 @@ function validateCapability(
 
   if (!cap.path) {
     errors.push({ path: `${prefix}.path`, message: 'path is required' });
+  } else if (cap.path.length > MAX_URL_LENGTH) {
+    errors.push({ path: `${prefix}.path`, message: `path exceeds ${MAX_URL_LENGTH} characters` });
   } else if (!cap.path.startsWith('/')) {
     errors.push({ path: `${prefix}.path`, message: 'path must start with /' });
   }
@@ -197,6 +236,11 @@ function validateCapability(
       }
       if (!input.description) {
         errors.push({ path: inputPrefix, message: 'description is required' });
+      } else if (input.description.length > MAX_DESCRIPTION_LENGTH) {
+        errors.push({
+          path: inputPrefix,
+          message: `description exceeds ${MAX_DESCRIPTION_LENGTH} characters`,
+        });
       }
       if (input.in && !VALID_IN_VALUES.includes(input.in)) {
         errors.push({
@@ -240,7 +284,7 @@ function validateCapability(
       if (Object.keys(c).length === 0) {
         errors.push({
           path: `${prefix}.constraints[${ci}]`,
-          message: 'empty constraint object — add at least one field',
+          message: 'empty constraint object. Add at least one field',
           level: 'warning',
         });
       }
@@ -262,4 +306,28 @@ function validateCapability(
   }
 
   return errors;
+}
+
+function isPrivateHost(hostname: string): boolean {
+  const lower = hostname.toLowerCase().replace(/^\[|\]$/g, ''); // strip IPv6 brackets
+  if (lower === 'localhost' || lower === '0.0.0.0') return true;
+
+  // IPv6 private ranges
+  if (lower === '::1' || lower === '0:0:0:0:0:0:0:1') return true; // loopback
+  if (lower.startsWith('fe80:')) return true; // link-local
+  if (lower.startsWith('fc00:') || lower.startsWith('fd00:')) return true; // unique local
+
+  // IPv4 private ranges (reject leading zeros to block octal bypass like 0177.0.0.1)
+  const rawParts = lower.split('.');
+  const parts = rawParts.map((p) => (/^(0|[1-9]\d*)$/.test(p) ? parseInt(p, 10) : NaN));
+  if (parts.length === 4 && parts.every((n) => !isNaN(n) && n >= 0 && n <= 255)) {
+    const [a, b] = parts;
+    if (a === 127) return true; // 127.x.x.x loopback
+    if (a === 10) return true; // 10.x.x.x private
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16-31.x.x private
+    if (a === 192 && b === 168) return true; // 192.168.x.x private
+    if (a === 169 && b === 254) return true; // 169.254.x.x link-local / AWS metadata
+  }
+
+  return false;
 }

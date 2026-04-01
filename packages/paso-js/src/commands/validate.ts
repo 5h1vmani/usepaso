@@ -16,22 +16,22 @@ function strictChecks(decl: PasoDeclaration): string[] {
   for (const cap of decl.capabilities) {
     if (cap.method === 'DELETE' && !cap.consent_required) {
       warnings.push(
-        `${cap.name}: DELETE without consent_required — agents could delete data without user approval`,
+        `${cap.name}: DELETE without consent_required. Agents could delete data without user approval`,
       );
     }
     if (cap.description && cap.description.length < 10) {
       warnings.push(
-        `${cap.name}: description is very short (${cap.description.length} chars) — agents need clear descriptions to use tools correctly`,
+        `${cap.name}: description is very short (${cap.description.length} chars). Agents need clear descriptions to use tools correctly`,
       );
     }
     if (['write', 'admin'].includes(cap.permission || '') && !cap.constraints?.length) {
       warnings.push(
-        `${cap.name}: ${cap.permission} capability with no constraints — consider adding rate limits or guardrails`,
+        `${cap.name}: ${cap.permission} capability with no constraints. Consider adding rate limits or guardrails`,
       );
     }
   }
   if (!decl.permissions) {
-    warnings.push('No permissions section defined — all capabilities are accessible by default');
+    warnings.push('No permissions section defined. All capabilities are accessible by default');
   }
   return warnings;
 }

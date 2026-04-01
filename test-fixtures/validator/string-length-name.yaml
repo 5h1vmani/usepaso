@@ -1,0 +1,19 @@
+description: "service name exceeding 100 characters triggers validation error"
+
+declaration:
+  version: "1.0"
+  service:
+    name: "this_service_name_is_intentionally_very_long_and_exceeds_the_one_hundred_character_maximum_limit_allowed"
+    description: Test API
+    base_url: https://api.example.com
+  capabilities:
+    - name: get_data
+      description: Get data
+      method: GET
+      path: /data
+      permission: read
+
+expected_warnings: []
+expected_errors:
+  - path: service.name
+    message_contains: "exceeds 100 characters"

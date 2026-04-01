@@ -20,16 +20,19 @@
         "name": {
           "type": "string",
           "minLength": 1,
+          "maxLength": 100,
           "description": "Human-readable service name"
         },
         "description": {
           "type": "string",
           "minLength": 1,
+          "maxLength": 500,
           "description": "What the service does (used by agents for discovery)"
         },
         "base_url": {
           "type": "string",
           "format": "uri",
+          "maxLength": 2000,
           "description": "Base URL of the API"
         },
         "version": {
@@ -67,11 +70,13 @@
           "name": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 100,
             "description": "Machine-readable identifier (snake_case)"
           },
           "description": {
             "type": "string",
             "minLength": 1,
+            "maxLength": 500,
             "description": "What this action does (agents read this)"
           },
           "method": {
@@ -81,6 +86,7 @@
           "path": {
             "type": "string",
             "pattern": "^/",
+            "maxLength": 2000,
             "description": "API path, may include {parameters}"
           },
           "permission": {
@@ -109,7 +115,8 @@
                 },
                 "description": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 500
                 },
                 "values": {
                   "type": "array",

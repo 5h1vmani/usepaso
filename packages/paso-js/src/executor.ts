@@ -110,10 +110,9 @@ export function buildRequest(
             headers[authHeader] = token;
             break;
           default:
-            process.stderr.write(
-              `Warning: unknown auth.type "${authType}" — sending token as-is in ${authHeader}\n`,
+            throw new Error(
+              `Unknown auth.type "${authType}". Expected one of: api_key, bearer, oauth2, none.`,
             );
-            headers[authHeader] = token;
         }
       }
     }

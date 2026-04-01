@@ -6,7 +6,7 @@ import asyncio
 import json
 import time
 from typing import Any, Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, quote_plus, urlencode
 
 import httpx
 
@@ -77,7 +77,7 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration,
 
     # Append query parameters
     if query_params:
-        query_string = urlencode(query_params, quote_via=quote)
+        query_string = urlencode(query_params, quote_via=quote_plus)
         url = f"{url}?{query_string}"
 
     # Build headers
@@ -100,12 +100,9 @@ def build_request(cap: PasoCapability, args: dict, decl: PasoDeclaration,
             elif auth.type == "api_key":
                 headers[header_name] = token
             else:
-                import sys
-                print(
-                    f'Warning: unknown auth.type "{auth.type}" — sending token as-is in {header_name}',
-                    file=sys.stderr,
+                raise ValueError(
+                    f'Unknown auth.type "{auth.type}". Expected one of: api_key, bearer, oauth2, none.'
                 )
-                headers[header_name] = token
 
     # Add header parameters (strip newlines to prevent header injection)
     for k, v in header_params.items():

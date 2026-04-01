@@ -19,5 +19,28 @@ export function parseString(content: string): PasoDeclaration {
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('Invalid YAML: expected an object');
   }
+
+  // Structural guards for clear error messages before validate() runs
+  if (!parsed.service || typeof parsed.service !== 'object' || Array.isArray(parsed.service)) {
+    throw new Error('Invalid declaration: "service" must be an object');
+  }
+  if (parsed.capabilities !== undefined && !Array.isArray(parsed.capabilities)) {
+    throw new Error('Invalid declaration: "capabilities" must be an array');
+  }
+  if (
+    parsed.service.auth !== undefined &&
+    (typeof parsed.service.auth !== 'object' || Array.isArray(parsed.service.auth))
+  ) {
+    throw new Error(
+      'Invalid declaration: "service.auth" must be an object (e.g. { type: "bearer" })',
+    );
+  }
+  if (
+    parsed.permissions !== undefined &&
+    (typeof parsed.permissions !== 'object' || Array.isArray(parsed.permissions))
+  ) {
+    throw new Error('Invalid declaration: "permissions" must be an object');
+  }
+
   return parsed as PasoDeclaration;
 }

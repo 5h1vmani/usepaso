@@ -15,15 +15,17 @@ def register(cli_group):
     @click.option('--json', 'as_json', is_flag=True, help='Output result as JSON')
     def inspect_cmd(file, as_json):
         """Show what MCP tools would be generated (dry run)."""
+        from pathlib import Path
+        file_path = str(Path(file).resolve())
 
         if as_json:
             try:
-                decl = parse_file(file)
+                decl = parse_file(file_path)
             except FileNotFoundError:
-                click.echo(json.dumps({"error": f"File not found: {file}"}))
+                click.echo(json.dumps({"error": f"File not found: {file_path}"}, separators=(',', ':')))
                 sys.exit(1)
             except Exception as e:
-                click.echo(json.dumps({"error": str(e)}))
+                click.echo(json.dumps({"error": str(e)}, separators=(',', ':')))
                 sys.exit(1)
 
             results = validate(decl)
@@ -32,7 +34,7 @@ def register(cli_group):
                 click.echo(json.dumps({
                     "error": "Validation failed",
                     "errors": [{"path": e.path, "message": e.message} for e in errors],
-                }))
+                }, separators=(',', ':')))
                 sys.exit(1)
 
             forbidden = set(decl.permissions.forbidden) if decl.permissions and decl.permissions.forbidden else set()
@@ -57,36 +59,42 @@ def register(cli_group):
                     for t in tools
                 ],
                 "forbidden": list(decl.permissions.forbidden) if decl.permissions and decl.permissions.forbidden else [],
-            }))
+            }, separators=(',', ':')))
             return
 
-        decl = load_and_validate(file)
+        try:
+            decl = load_and_validate(file_path)
 
-        forbidden = set(decl.permissions.forbidden) if decl.permissions and decl.permissions.forbidden else set()
-        tools = [c for c in decl.capabilities if c.name not in forbidden]
+            forbidden = set(decl.permissions.forbidden) if decl.permissions and decl.permissions.forbidden else set()
+            tools = [c for c in decl.capabilities if c.name not in forbidden]
 
-        click.echo(f"Service: {cyan(decl.service.name)}")
-        click.echo(f"Tools:   {len(tools)}")
-        click.echo(f"Auth:    {decl.service.auth.type if decl.service.auth else 'none'}")
-        click.echo("")
+            click.echo(f"Service: {cyan(decl.service.name)}")
+            click.echo(f"Tools:   {len(tools)}")
+            click.echo(f"Auth:    {decl.service.auth.type if decl.service.auth else 'none'}")
+            click.echo("")
 
-        for i, tool in enumerate(tools):
-            is_last = i == len(tools) - 1
-            connector = '┌' if i == 0 else ('└' if is_last else '├')
-            cont = ' ' if is_last else '│'
-            badge = " [consent required]" if tool.consent_required else ""
-            click.echo(f"  {dim(connector)} {cyan(tool.name)} {dim(f'({tool.permission})')}{badge}")
-            click.echo(f"  {dim(cont)} {dim(f'{tool.method} {tool.path}')}")
-            click.echo(f"  {dim(cont)} {tool.description}")
-            if tool.inputs:
-                params = ", ".join(
-                    f"{k}{'*' if v.required else ''}: {v.type}"
-                    for k, v in tool.inputs.items()
-                )
-                click.echo(f"  {dim(cont)} params: {params}")
-            if not is_last:
-                click.echo(f"  {dim('│')}")
-        click.echo("")
+            for i, tool in enumerate(tools):
+                is_last = i == len(tools) - 1
+                connector = '┌' if i == 0 else ('└' if is_last else '├')
+                cont = ' ' if is_last else '│'
+                badge = " [consent required]" if tool.consent_required else ""
+                click.echo(f"  {dim(connector)} {cyan(tool.name)} {dim(f'({tool.permission})')}{badge}")
+                click.echo(f"  {dim(cont)} {dim(f'{tool.method} {tool.path}')}")
+                click.echo(f"  {dim(cont)} {tool.description}")
+                if tool.inputs:
+                    params = ", ".join(
+                        f"{k}{'*' if v.required else ''}: {v.type}"
+                        for k, v in tool.inputs.items()
+                    )
+                    click.echo(f"  {dim(cont)} params: {params}")
+                if not is_last:
+                    click.echo(f"  {dim('│')}")
+            click.echo("")
 
-        if decl.permissions and decl.permissions.forbidden:
-            click.echo(f"Forbidden: {', '.join(decl.permissions.forbidden)}")
+            if decl.permissions and decl.permissions.forbidden:
+                click.echo(f"Forbidden: {', '.join(decl.permissions.forbidden)}")
+        except SystemExit:
+            raise
+        except Exception as e:
+            click.echo(f'Failed: {e}', err=True)
+            sys.exit(1)

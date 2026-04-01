@@ -1,6 +1,5 @@
 import re
 import sys
-from pathlib import Path
 
 import click
 
@@ -14,10 +13,10 @@ def load_and_validate(file_path):
     try:
         decl = parse_file(file_path)
     except FileNotFoundError:
-        click.echo(red(f"Error: file '{file_path}' not found") + dim(" Run usepaso init to create one."), err=True)
+        click.echo(red(f"File not found: {file_path}") + dim(" Run usepaso init to create one."), err=True)
         sys.exit(1)
     except Exception as e:
-        click.echo(red(f"Error parsing {file_path}: {e}"), err=True)
+        click.echo(red(f"Failed to parse {file_path}: {e}"), err=True)
         sys.exit(1)
 
     results = validate(decl)
@@ -36,28 +35,18 @@ def load_and_validate(file_path):
     return decl
 
 
-def mcp_config_snippet(file_path, service_name):
-    abs_path = str(Path(file_path).resolve())
-    slug = re.sub(r'[^a-z0-9]+', '-', service_name.lower()).strip('-')
+def slugify(name: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-') or 'usepaso-service'
+
+
+def mcp_config_snippet(service_name):
+    slug = slugify(service_name)
     return f"""
-Add this to your MCP client config:
+Connect to an MCP client:
 
-Claude Desktop (claude_desktop_config.json):
-{{
-  "mcpServers": {{
-    "{slug}": {{
-      "command": "usepaso",
-      "args": ["serve", "-f", "{abs_path}"],
-      "env": {{ "USEPASO_AUTH_TOKEN": "your-token" }}
-    }}
-  }}
-}}
+  usepaso connect claude-desktop
+  usepaso connect cursor
+  usepaso connect vscode
+  usepaso connect windsurf
 
-Cursor (.cursor/mcp.json):
-{{
-  "{slug}": {{
-    "command": "usepaso",
-    "args": ["serve", "-f", "{abs_path}"],
-    "env": {{ "USEPASO_AUTH_TOKEN": "your-token" }}
-  }}
-}}"""
+Or add "{slug}" manually to your client config. See: usepaso connect --help"""

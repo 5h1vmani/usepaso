@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from usepaso.generators.mcp import generate_mcp_server, _build_tool_description
+from usepaso.generators.mcp import generate_mcp_server, build_json_schema, _build_tool_description
 from usepaso.parser import parse_file
 from usepaso.types import (
     PasoDeclaration, PasoService, PasoCapability,
@@ -50,59 +50,46 @@ def minimal() -> PasoDeclaration:
     )
 
 
-def _get_tools(mcp):
-    """Extract registered tool names from a FastMCP server."""
-    # FastMCP stores tools in _tool_manager._tools dict
-    if hasattr(mcp, '_tool_manager'):
-        return list(mcp._tool_manager._tools.keys())
-    # Fallback: try direct attribute
-    if hasattr(mcp, '_tools'):
-        return list(mcp._tools.keys())
-    raise RuntimeError("Cannot find tool registry on FastMCP server")
-
-
 class TestGenerateMcpServer:
     def test_creates_server_from_minimal_declaration(self):
-        mcp = generate_mcp_server(minimal())
-        assert mcp is not None
+        result = generate_mcp_server(minimal())
+        assert result is not None
+        assert result.server is not None
+        assert result.tool_names is not None
 
     def test_registers_tools_for_each_capability(self):
-        mcp = generate_mcp_server(minimal())
-        tools = _get_tools(mcp)
-        assert len(tools) == 2
-        assert "get_item" in tools
-        assert "create_item" in tools
+        result = generate_mcp_server(minimal())
+        assert len(result.tool_names) == 2
+        assert "get_item" in result.tool_names
+        assert "create_item" in result.tool_names
 
     def test_skips_forbidden_capabilities(self):
         decl = minimal()
         decl.permissions = PasoPermissions(forbidden=["create_item"])
-        mcp = generate_mcp_server(decl)
-        tools = _get_tools(mcp)
-        assert len(tools) == 1
-        assert "get_item" in tools
-        assert "create_item" not in tools
+        result = generate_mcp_server(decl)
+        assert len(result.tool_names) == 1
+        assert "get_item" in result.tool_names
+        assert "create_item" not in result.tool_names
 
     def test_works_with_sentry_example(self):
         example_path = Path(__file__).parent / ".." / ".." / ".." / "examples" / "sentry" / "usepaso.yaml"
         if not example_path.resolve().exists():
             pytest.skip("Sentry example not found")
         decl = parse_file(str(example_path.resolve()))
-        mcp = generate_mcp_server(decl)
-        tools = _get_tools(mcp)
-        assert len(tools) > 0
-        assert "list_issues" in tools
-        assert "resolve_issue" in tools
+        result = generate_mcp_server(decl)
+        assert len(result.tool_names) > 0
+        assert "list_issues" in result.tool_names
+        assert "resolve_issue" in result.tool_names
 
     def test_works_with_stripe_example(self):
         example_path = Path(__file__).parent / ".." / ".." / ".." / "examples" / "stripe" / "usepaso.yaml"
         if not example_path.resolve().exists():
             pytest.skip("Stripe example not found")
         decl = parse_file(str(example_path.resolve()))
-        mcp = generate_mcp_server(decl)
-        tools = _get_tools(mcp)
-        assert "list_customers" in tools
-        assert "create_payment_intent" in tools
-        assert "delete_customer" not in tools
+        result = generate_mcp_server(decl)
+        assert "list_customers" in result.tool_names
+        assert "create_payment_intent" in result.tool_names
+        assert "delete_customer" not in result.tool_names
 
     def test_handles_capabilities_with_no_inputs(self):
         decl = PasoDeclaration(
@@ -115,9 +102,8 @@ class TestGenerateMcpServer:
                 ),
             ],
         )
-        mcp = generate_mcp_server(decl)
-        tools = _get_tools(mcp)
-        assert len(tools) == 1
+        result = generate_mcp_server(decl)
+        assert len(result.tool_names) == 1
 
 
 class TestBuildToolDescription:

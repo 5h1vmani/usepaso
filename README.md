@@ -133,7 +133,8 @@ No runtime dependency beyond the SDK. No protocol code to write. No lock-in.
 
 | Command | What it does |
 | --- | --- |
-| `usepaso init` | Scaffold a `usepaso.yaml` template |
+| `usepaso init` | Scaffold a `usepaso.yaml` template (JSONPlaceholder example) |
+| `usepaso init --blank` | Scaffold a blank template |
 | `usepaso init --from-openapi` | Generate from an OpenAPI spec |
 | `usepaso validate` | Check your declaration for errors |
 | `usepaso validate --strict` | Check for best practices (missing constraints, consent) |
@@ -142,7 +143,10 @@ No runtime dependency beyond the SDK. No protocol code to write. No lock-in.
 | `usepaso test --dry-run` | Same thing, minus the consequences |
 | `usepaso test --all --dry-run` | Verify all capabilities resolve correctly |
 | `usepaso serve` | Start an MCP server |
+| `usepaso serve --strict` | Serve with consent gates enforced (two-phase confirmation) |
 | `usepaso serve --verbose` | Serve with request logging |
+| `usepaso connect <client>` | Wire this server into an MCP client config (claude-desktop, cursor, vscode, windsurf) |
+| `usepaso disconnect <client>` | Remove from an MCP client config |
 | `usepaso doctor` | Check your setup end-to-end (file, auth, connectivity) |
 | `usepaso completion` | Output shell completion script (bash, zsh, fish) |
 | `usepaso version` | Print the version |
@@ -156,7 +160,27 @@ export USEPASO_AUTH_TOKEN="your-api-token"
 usepaso serve
 ```
 
+Or put it in a `.env` file next to your `usepaso.yaml`. paso loads it automatically on `serve`, `test`, and `doctor`. The file is never read by agents — only by the local CLI.
+
+```bash
+# .env
+USEPASO_AUTH_TOKEN=your-api-token
+```
+
 ## Connect to MCP Clients
+
+The fastest way is `usepaso connect`:
+
+```bash
+usepaso connect claude-desktop
+usepaso connect cursor
+usepaso connect vscode
+usepaso connect windsurf
+```
+
+This writes the correct config entry for you. Run `usepaso disconnect <client>` to remove it.
+
+Or add manually:
 
 ### Claude Desktop
 
@@ -180,10 +204,12 @@ Add to `.cursor/mcp.json`:
 
 ```json
 {
-  "sentry": {
-    "command": "npx",
-    "args": ["usepaso", "serve", "-f", "/path/to/usepaso.yaml"],
-    "env": { "USEPASO_AUTH_TOKEN": "your-token" }
+  "mcpServers": {
+    "sentry": {
+      "command": "npx",
+      "args": ["usepaso", "serve", "-f", "/path/to/usepaso.yaml"],
+      "env": { "USEPASO_AUTH_TOKEN": "your-token" }
+    }
   }
 }
 ```
@@ -231,7 +257,7 @@ You're in the wrong directory, or you haven't created one yet. Run `usepaso init
 Check that usepaso is installed globally or use the full path in your MCP config. The `serve` command prints the exact config snippet you need.
 
 **OpenAPI import only generated 20 capabilities.**
-paso caps at 20 capabilities per import to keep declarations manageable. Edit `usepaso.yaml` to add more manually, or remove ones you don't need and re-import.
+That is the default cap. Use `--max-capabilities <n>` to change it: `usepaso init --from-openapi ./openapi.json --max-capabilities 50`. Or edit `usepaso.yaml` to add more manually.
 
 **Validation fails on generated YAML.**
 The OpenAPI converter handles common patterns but not every edge case. Run `usepaso validate` to see what's wrong, fix the YAML, and re-validate.

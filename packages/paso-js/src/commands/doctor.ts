@@ -1,15 +1,17 @@
 import { Command } from 'commander';
-import { resolve } from 'path';
-import { existsSync } from 'fs';
+import { resolve, dirname, join } from 'path';
+import { existsSync, statSync } from 'fs';
 import { parseFile } from '../parser';
 import { validate } from '../validator';
-import { green, red, cyan, dim } from '../utils/color';
+import { green, red, cyan, dim, yellow } from '../utils/color';
+import { loadEnvFile, isEnvTrackedByGit } from '../utils/env';
 
 export function registerDoctor(program: Command): void {
   program
     .command('doctor')
     .description('Check your usepaso setup for common issues')
     .option('-f, --file <path>', 'Path to usepaso.yaml', 'usepaso.yaml')
+    .option('--env <path>', 'Path to .env file (default: .env next to usepaso.yaml)')
     .action(async (opts) => {
       const filePath = resolve(opts.file);
       let failed = 0;
@@ -61,7 +63,32 @@ export function registerDoctor(program: Command): void {
         ok('Validation passes', `${decl.capabilities.length} capabilities${warnSuffix}`);
       }
 
-      // 4. Auth token
+      // 4. .env file
+      const dir = dirname(filePath);
+      const envPath = opts.env || join(dir, '.env');
+      if (existsSync(envPath)) {
+        loadEnvFile(filePath, opts.env);
+        ok('.env file found', opts.env ? envPath : undefined);
+        if (isEnvTrackedByGit(dirname(envPath))) {
+          console.log(`  ${yellow('WARN')} .env is tracked by git. Run: git rm --cached .env`);
+        }
+        // Check file permissions on Unix (skip on Windows)
+        if (process.platform !== 'win32') {
+          try {
+            const mode = statSync(envPath).mode;
+            const othersRead = mode & 0o004;
+            if (othersRead) {
+              console.log(`  ${yellow('WARN')} .env is world-readable. Run: chmod 600 .env`);
+            }
+          } catch {
+            // Ignore stat errors
+          }
+        }
+      } else {
+        ok('.env file', 'not found, using environment variables');
+      }
+
+      // 5. Auth token
       const authType = decl.service?.auth?.type;
       const token = process.env.USEPASO_AUTH_TOKEN;
       if (authType && authType !== 'none') {
@@ -78,7 +105,7 @@ export function registerDoctor(program: Command): void {
         ok('Auth', 'type is "none", no token needed');
       }
 
-      // 5. Base URL reachable
+      // 6. Base URL reachable
       const baseUrl = decl.service?.base_url;
       if (baseUrl) {
         try {

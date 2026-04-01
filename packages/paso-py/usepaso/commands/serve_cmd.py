@@ -4,78 +4,100 @@ import sys
 import click
 
 from usepaso.commands.shared import load_and_validate, mcp_config_snippet
-from usepaso.utils.color import green, cyan, yellow
+from usepaso.utils.color import green, cyan, yellow, dim
 from usepaso.utils.redact import redact_url
+from usepaso.utils.env import load_env_file
 
 
 def register(cli_group):
     @cli_group.command()
     @click.option('--file', '-f', default='usepaso.yaml', help='Path to usepaso.yaml file')
+    @click.option('--env', 'env_file', default=None, help='Path to .env file (default: .env next to usepaso.yaml)')
     @click.option('--verbose', '-v', is_flag=True, help='Log all requests to stderr')
     @click.option('--watch', '-w', is_flag=True, help='Notify when usepaso.yaml changes (requires manual restart)')
-    def serve(file, verbose, watch):
+    @click.option('--strict', is_flag=True, help='Enforce consent gates server-side (for headless/untrusted agents)')
+    def serve(file, env_file, verbose, watch, strict):
         """Start an MCP server from a usepaso.yaml declaration."""
-        from usepaso.generators.mcp import serve_mcp
-        from pathlib import Path
+        try:
+            _run_serve(file, env_file, verbose, watch, strict)
+        except SystemExit:
+            raise
+        except Exception as e:
+            click.echo(f'Failed to start: {e}', err=True)
+            sys.exit(1)
 
-        decl = load_and_validate(file)
-        cap_count = len(decl.capabilities) if decl.capabilities else 0
 
-        auth_token = os.environ.get('USEPASO_AUTH_TOKEN')
-        if auth_token is not None and auth_token == '':
-            click.echo(yellow('Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.'), err=True)
-        if decl.service.auth:
-            if decl.service.auth.type == 'none' and auth_token:
-                click.echo(yellow('Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN'), err=True)
-            elif decl.service.auth.type != 'none' and not auth_token:
-                click.echo(yellow(
-                    f'Warning: auth type "{decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.'
-                ), err=True)
+def _run_serve(file, env_file, verbose, watch, strict):
+    from usepaso.generators.mcp import serve_mcp, ServeOptions
+    from pathlib import Path
 
-        # Security: warn if base_url uses plain HTTP
-        if decl.service.base_url.startswith('http://'):
-            click.echo(yellow('Warning: base_url uses http://. Auth tokens will be sent in plain text.'), err=True)
+    file_path = str(Path(file).resolve())
+    decl = load_and_validate(file_path)
+    cap_count = len(decl.capabilities) if decl.capabilities else 0
 
-        click.echo(f'{green("usepaso serving")} "{cyan(decl.service.name)}" ({cap_count} capabilities). Agents welcome.', err=True)
-        click.echo('Transport: stdio. Waiting for an MCP client...', err=True)
+    # Load .env file if present (does not override existing env vars)
+    loaded = load_env_file(file_path, env_file)
+    if loaded:
+        click.echo(dim(f'Loaded environment from {env_file or ".env"}'), err=True)
 
-        click.echo(mcp_config_snippet(file, decl.service.name), err=True)
-        click.echo('', err=True)
+    auth_token = os.environ.get('USEPASO_AUTH_TOKEN')
+    if auth_token is not None and auth_token == '':
+        click.echo(yellow('Warning: USEPASO_AUTH_TOKEN is set but empty. API requests will likely fail.'), err=True)
+    if decl.service.auth:
+        if decl.service.auth.type == 'none' and auth_token:
+            click.echo(yellow('Note: auth.type is "none", ignoring USEPASO_AUTH_TOKEN'), err=True)
+        elif decl.service.auth.type != 'none' and not auth_token:
+            click.echo(yellow(
+                f'Warning: auth type "{decl.service.auth.type}" is configured but USEPASO_AUTH_TOKEN is not set. API requests will likely fail with 401.'
+            ), err=True)
 
-        if watch:
-            import threading
-            import time
+    # Security: warn if base_url uses plain HTTP
+    if decl.service.base_url.startswith('http://'):
+        click.echo(yellow('Warning: base_url uses http://. Auth tokens will be sent in plain text.'), err=True)
 
-            def watch_file():
-                last_mtime = Path(file).stat().st_mtime
-                while True:
-                    time.sleep(1)
-                    try:
-                        current_mtime = Path(file).stat().st_mtime
-                        if current_mtime != last_mtime:
-                            last_mtime = current_mtime
-                            click.echo(f"\nFile changed. Restart the server to pick up changes.", err=True)
-                    except Exception:
-                        pass
+    if strict:
+        click.echo(yellow('Strict mode: consent-gated tools require two-phase confirmation.'), err=True)
 
-            t = threading.Thread(target=watch_file, daemon=True)
-            t.start()
-            click.echo(f"Watching {file} for changes...", err=True)
+    click.echo(f'{green("usepaso serving")} "{cyan(decl.service.name)}" ({cap_count} capabilities). Agents welcome.', err=True)
+    click.echo('Transport: stdio. Waiting for an MCP client...', err=True)
 
-        on_log = None
-        if verbose:
-            from datetime import datetime
+    click.echo(mcp_config_snippet(decl.service.name), err=True)
+    click.echo('', err=True)
 
-            def on_log(cap_name, result, _decl):
-                now = datetime.now().strftime('%H:%M:%S')
-                if result.get('error'):
-                    click.echo(f"[{now}] {cap_name} → ERROR: {result['error']}", err=True)
-                else:
-                    req = result['request']
-                    safe_url = redact_url(req['url'])
-                    click.echo(
-                        f"[{now}] {cap_name} → {req['method']} {safe_url} ← {result.get('status')} ({result['duration_ms']}ms)",
-                        err=True
-                    )
+    if watch:
+        import threading
+        import time
 
-        serve_mcp(decl, on_log=on_log)
+        def watch_file():
+            last_mtime = Path(file_path).stat().st_mtime
+            while True:
+                time.sleep(1)
+                try:
+                    current_mtime = Path(file_path).stat().st_mtime
+                    if current_mtime != last_mtime:
+                        last_mtime = current_mtime
+                        click.echo(f"\nFile changed. Restart the server to pick up changes.", err=True)
+                except Exception:
+                    pass
+
+        t = threading.Thread(target=watch_file, daemon=True)
+        t.start()
+        click.echo(f"Watching {file_path} for changes...", err=True)
+
+    on_log = None
+    if verbose:
+        from datetime import datetime
+
+        def on_log(cap_name, result):
+            now = datetime.utcnow().strftime('%H:%M:%S')
+            if result.get('error'):
+                click.echo(f"[{now}] {cap_name} → ERROR: {result['error']}", err=True)
+            else:
+                req = result['request']
+                safe_url = redact_url(req['url'])
+                click.echo(
+                    f"[{now}] {cap_name} → {req['method']} {safe_url} ← {result.get('status')} ({result['duration_ms']}ms)",
+                    err=True
+                )
+
+    serve_mcp(decl, options=ServeOptions(on_log=on_log, strict=strict))

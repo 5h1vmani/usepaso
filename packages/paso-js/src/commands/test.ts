@@ -4,12 +4,14 @@ import { loadAndValidate } from './shared';
 import { buildRequest, executeRequest, formatError } from '../executor';
 import { coerceValue } from '../utils/coerce';
 import { green, cyan, dim } from '../utils/color';
+import { loadEnvFile } from '../utils/env';
 
 export function registerTest(program: Command): void {
   program
     .command('test [capability]')
     .description('Test a capability against the live API (or --dry-run, minus the consequences)')
     .option('-f, --file <path>', 'Path to usepaso.yaml', 'usepaso.yaml')
+    .option('--env <path>', 'Path to .env file (default: .env next to usepaso.yaml)')
     .option(
       '-p, --param <key=value...>',
       'Parameters (repeatable)',
@@ -24,7 +26,9 @@ export function registerTest(program: Command): void {
     .option('--timeout <seconds>', 'Request timeout in seconds', '30')
     .action(async (capabilityName, opts) => {
       try {
-        const decl = loadAndValidate(resolve(opts.file));
+        const filePath = resolve(opts.file);
+        const decl = loadAndValidate(filePath);
+        loadEnvFile(filePath, opts.env);
 
         // --all mode: dry-run all capabilities
         if (opts.all) {
@@ -79,7 +83,7 @@ export function registerTest(program: Command): void {
         // Auth notices (once, not per-request)
         const authToken = process.env.USEPASO_AUTH_TOKEN;
         if (decl.service.auth?.type === 'none' && authToken) {
-          console.error(`Note: auth.type is "none" — ignoring USEPASO_AUTH_TOKEN`);
+          console.error(`Note: auth.type is "none", ignoring USEPASO_AUTH_TOKEN`);
         }
         if (authToken !== undefined && authToken === '') {
           console.error(
@@ -117,7 +121,7 @@ export function registerTest(program: Command): void {
             // Unknown param — keep as string but warn
             args[key] = raw;
             console.error(
-              `Warning: unknown parameter "${key}" — not declared in inputs for ${capabilityName}`,
+              `Warning: unknown parameter "${key}", not declared in inputs for ${capabilityName}`,
             );
           }
         }

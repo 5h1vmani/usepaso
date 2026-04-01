@@ -10,6 +10,9 @@ VALID_OUTPUT_TYPES = ['string', 'integer', 'number', 'boolean', 'object', 'array
 VALID_AUTH_TYPES = ['api_key', 'bearer', 'oauth2', 'none']
 VALID_IN_VALUES = ['query', 'path', 'body', 'header']
 SNAKE_CASE_RE = re.compile(r'^[a-z][a-z0-9_]*$')
+MAX_NAME_LENGTH = 100
+MAX_DESCRIPTION_LENGTH = 500
+MAX_URL_LENGTH = 2000
 
 
 def validate(decl: PasoDeclaration) -> list[ValidationError]:
@@ -31,19 +34,33 @@ def validate(decl: PasoDeclaration) -> list[ValidationError]:
     else:
         if not decl.service.name:
             errors.append(ValidationError(path='service.name', message='service.name is required'))
+        elif len(decl.service.name) > MAX_NAME_LENGTH:
+            errors.append(ValidationError(path='service.name', message=f'service.name exceeds {MAX_NAME_LENGTH} characters'))
         if not decl.service.description:
             errors.append(ValidationError(path='service.description', message='service.description is required'))
+        elif len(decl.service.description) > MAX_DESCRIPTION_LENGTH:
+            errors.append(ValidationError(path='service.description', message=f'service.description exceeds {MAX_DESCRIPTION_LENGTH} characters'))
         if not decl.service.base_url:
             errors.append(ValidationError(path='service.base_url', message='service.base_url is required'))
+        elif len(decl.service.base_url) > MAX_URL_LENGTH:
+            errors.append(ValidationError(path='service.base_url', message=f'service.base_url exceeds {MAX_URL_LENGTH} characters'))
         else:
             if not _is_valid_url(decl.service.base_url):
                 errors.append(ValidationError(path='service.base_url', message='service.base_url must be a valid URL'))
-            elif decl.service.base_url.startswith('http://'):
-                errors.append(ValidationError(
-                    path='service.base_url',
-                    message='base_url uses http:// — consider https:// to protect auth tokens in transit',
-                    level='warning',
-                ))
+            else:
+                parsed = urlparse(decl.service.base_url)
+                if parsed.scheme == 'http':
+                    errors.append(ValidationError(
+                        path='service.base_url',
+                        message='base_url uses http://. Consider https:// to protect auth tokens in transit',
+                        level='warning',
+                    ))
+                if _is_private_host(parsed.hostname or ''):
+                    errors.append(ValidationError(
+                        path='service.base_url',
+                        message='base_url points to a private/internal address. If this YAML was shared with you, verify the URL before running usepaso serve.',
+                        level='warning',
+                    ))
 
         if decl.service.auth:
             if decl.service.auth.type not in VALID_AUTH_TYPES:
@@ -61,7 +78,7 @@ def validate(decl: PasoDeclaration) -> list[ValidationError]:
         if len(decl.capabilities) == 0:
             errors.append(ValidationError(
                 path='capabilities',
-                message='capabilities array is empty — MCP server will have no tools',
+                message='capabilities array is empty. MCP server will have no tools',
                 level='warning',
             ))
         names: set[str] = set()
@@ -79,7 +96,7 @@ def validate(decl: PasoDeclaration) -> list[ValidationError]:
             if tier_list is not None and len(tier_list) == 0:
                 errors.append(ValidationError(
                     path=f'permissions.{tier}',
-                    message='empty array — remove it or add capability names',
+                    message='empty array. Remove it or add capability names',
                     level='warning',
                 ))
             if tier_list and len(tier_list) > 0:
@@ -118,14 +135,14 @@ def validate(decl: PasoDeclaration) -> list[ValidationError]:
 
 
 def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> list[ValidationError]:
-    """
-    Validate a single capability.
-    """
+    """Validate a single capability."""
     errors: list[ValidationError] = []
 
     if not cap.name:
         errors.append(ValidationError(path=f'{prefix}.name', message='name is required'))
     else:
+        if len(cap.name) > MAX_NAME_LENGTH:
+            errors.append(ValidationError(path=f'{prefix}.name', message=f'name exceeds {MAX_NAME_LENGTH} characters'))
         if not SNAKE_CASE_RE.match(cap.name):
             errors.append(ValidationError(
                 path=f'{prefix}.name',
@@ -140,6 +157,8 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
 
     if not cap.description:
         errors.append(ValidationError(path=f'{prefix}.description', message='description is required'))
+    elif len(cap.description) > MAX_DESCRIPTION_LENGTH:
+        errors.append(ValidationError(path=f'{prefix}.description', message=f'description exceeds {MAX_DESCRIPTION_LENGTH} characters'))
 
     if not cap.method:
         errors.append(ValidationError(path=f'{prefix}.method', message='method is required'))
@@ -151,6 +170,8 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
 
     if not cap.path:
         errors.append(ValidationError(path=f'{prefix}.path', message='path is required'))
+    elif len(cap.path) > MAX_URL_LENGTH:
+        errors.append(ValidationError(path=f'{prefix}.path', message=f'path exceeds {MAX_URL_LENGTH} characters'))
     elif not cap.path.startswith('/'):
         errors.append(ValidationError(path=f'{prefix}.path', message='path must start with /'))
 
@@ -182,6 +203,8 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
 
             if not input_obj.description:
                 errors.append(ValidationError(path=input_prefix, message='description is required'))
+            elif len(input_obj.description) > MAX_DESCRIPTION_LENGTH:
+                errors.append(ValidationError(path=input_prefix, message=f'description exceeds {MAX_DESCRIPTION_LENGTH} characters'))
 
             if input_obj.in_ and input_obj.in_ not in VALID_IN_VALUES:
                 errors.append(ValidationError(
@@ -217,7 +240,7 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
             if len(fields) == 0:
                 errors.append(ValidationError(
                     path=f'{prefix}.constraints[{ci}]',
-                    message='empty constraint object — add at least one field',
+                    message='empty constraint object. Add at least one field',
                     level='warning',
                 ))
 
@@ -239,11 +262,44 @@ def _validate_capability(cap: PasoCapability, prefix: str, names: set[str]) -> l
 
 
 def _is_valid_url(url: str) -> bool:
-    """
-    Check if a string is a valid URL.
-    """
     try:
         result = urlparse(url)
         return all([result.scheme, result.netloc])
     except Exception:
         return False
+
+
+def _is_private_host(hostname: str) -> bool:
+    lower = hostname.lower().strip('[]')  # strip IPv6 brackets
+    if lower in ('localhost', '0.0.0.0'):
+        return True
+
+    # IPv6 private ranges
+    if lower in ('::1', '0:0:0:0:0:0:0:1'):
+        return True
+    if lower.startswith('fe80:'):
+        return True
+    if lower.startswith('fc00:') or lower.startswith('fd00:'):
+        return True
+
+    # IPv4 private ranges (reject leading zeros to block octal bypass like 0177.0.0.1)
+    raw_parts = lower.split('.')
+    if len(raw_parts) == 4 and all(re.match(r'^(0|[1-9]\d*)$', p) for p in raw_parts):
+        try:
+            nums = [int(p, 10) for p in raw_parts]
+            if all(0 <= n <= 255 for n in nums):
+                a, b = nums[0], nums[1]
+                if a == 127:
+                    return True
+                if a == 10:
+                    return True
+                if a == 172 and 16 <= b <= 31:
+                    return True
+                if a == 192 and b == 168:
+                    return True
+                if a == 169 and b == 254:
+                    return True
+        except ValueError:
+            pass
+
+    return False

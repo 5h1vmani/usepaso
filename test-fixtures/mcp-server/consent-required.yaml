@@ -1,0 +1,47 @@
+description: >
+  Declaration with consent_required capability for testing two-phase confirmation.
+  Both SDKs must: (1) return a consent challenge on first call, (2) execute on
+  valid confirmation, (3) reject expired or mismatched tokens.
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestService
+    description: Test API for consent enforcement
+    base_url: https://jsonplaceholder.typicode.com
+    auth:
+      type: none
+  capabilities:
+    - name: safe_read
+      description: A read action that does not require consent
+      method: GET
+      path: /posts/{id}
+      permission: read
+      inputs:
+        id:
+          type: integer
+          required: true
+          description: Post ID
+          in: path
+
+    - name: dangerous_delete
+      description: A destructive action that requires consent
+      method: DELETE
+      path: /posts/{id}
+      permission: write
+      consent_required: true
+      inputs:
+        id:
+          type: integer
+          required: true
+          description: Post ID to delete
+          in: path
+
+# In strict mode:
+#   safe_read: executes immediately (no consent gate)
+#   dangerous_delete (first call): returns consent challenge with a token
+#   dangerous_delete (second call with valid __confirm): executes
+#   dangerous_delete (with wrong __confirm): returns error
+#
+# In advisory mode (default):
+#   dangerous_delete: executes immediately, logs [CONSENT] to stderr

@@ -17,7 +17,7 @@ __all__ = [
 
 
 def generate_mcp_server(*args, **kwargs):
-    """Generate a FastMCP server from a Paso declaration. Lazy-imports mcp dependency."""
+    """Generate an MCP server from a Paso declaration. Lazy-imports mcp dependency."""
     from usepaso.generators.mcp import generate_mcp_server as _generate
     return _generate(*args, **kwargs)
 

@@ -3,7 +3,7 @@
 import click
 from importlib.metadata import version as pkg_version
 
-from usepaso.commands import init_cmd, validate_cmd, inspect_cmd, test_cmd, serve_cmd, doctor_cmd
+from usepaso.commands import init_cmd, validate_cmd, inspect_cmd, test_cmd, serve_cmd, doctor_cmd, connect_cmd
 
 try:
     __version__ = pkg_version('usepaso')
@@ -14,7 +14,7 @@ except Exception:
 @click.group()
 @click.version_option(version=__version__, prog_name='usepaso', message='%(version)s')
 def main():
-    """usepaso — Make your API agent-ready in minutes."""
+    """Make your API agent-ready in minutes."""
     pass
 
 
@@ -24,6 +24,7 @@ inspect_cmd.register(main)
 test_cmd.register(main)
 serve_cmd.register(main)
 doctor_cmd.register(main)
+connect_cmd.register(main)
 
 
 @main.command()
@@ -36,7 +37,7 @@ def version():
 @click.option('--shell', default='bash', type=click.Choice(['bash', 'zsh', 'fish']), help='Shell type')
 def completion(shell):
     """Output shell completion script."""
-    commands = ['init', 'validate', 'inspect', 'test', 'serve', 'doctor', 'version', 'completion']
+    commands = ['init', 'validate', 'inspect', 'test', 'serve', 'doctor', 'connect', 'disconnect', 'version', 'completion']
     cmds = ' '.join(commands)
     if shell == 'zsh':
         click.echo(f'#compdef usepaso\n_usepaso() {{\n  local commands=({cmds})\n  _describe \'command\' commands\n}}\ncompdef _usepaso usepaso')

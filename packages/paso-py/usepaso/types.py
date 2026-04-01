@@ -76,7 +76,7 @@ class PasoOutput:
 class PasoConstraint:
     max_per_hour: Optional[int] = None
     max_per_request: Optional[int] = None
-    max_value: Optional[int] = None
+    max_value: Optional[float] = None
     allowed_values: Optional[List[Any]] = None
     requires_field: Optional[str] = None
     description: Optional[str] = None

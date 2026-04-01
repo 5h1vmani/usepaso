@@ -11,7 +11,7 @@
  *   muted:   #7a7773 (warm gray)
  */
 
-const enabled = !process.env.NO_COLOR && process.stderr.isTTY !== false;
+const enabled = !process.env.NO_COLOR && !!process.stdout.isTTY;
 
 const trueColor =
   enabled &&

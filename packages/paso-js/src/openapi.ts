@@ -104,7 +104,7 @@ interface OpenApiSpec {
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
-const MAX_CAPABILITIES = 20;
+const DEFAULT_MAX_CAPABILITIES = 20;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -435,7 +435,7 @@ function resolveRefs(
     if (ref.startsWith('#/')) {
       // Circular ref detection
       if (resolving.has(ref)) {
-        process.stderr.write(`Warning: circular $ref detected at ${ref} — using placeholder\n`);
+        process.stderr.write(`Warning: circular $ref detected at ${ref}. Using placeholder\n`);
         return { type: 'object', description: `(circular reference to ${ref})` };
       }
 
@@ -491,7 +491,10 @@ export interface OpenApiResult {
   adminCount: number;
 }
 
-export function generateFromOpenApi(openapiSpec: object): OpenApiResult {
+export function generateFromOpenApi(
+  openapiSpec: object,
+  maxCapabilities: number = DEFAULT_MAX_CAPABILITIES,
+): OpenApiResult {
   // Resolve all $ref pointers first
   const spec = resolveRefs(openapiSpec, openapiSpec as Record<string, unknown>) as OpenApiSpec;
 
@@ -532,7 +535,7 @@ export function generateFromOpenApi(openapiSpec: object): OpenApiResult {
     if (!pathItem) continue;
 
     for (const method of HTTP_METHODS) {
-      if (capabilities.length >= MAX_CAPABILITIES) break outer;
+      if (capabilities.length >= maxCapabilities) break outer;
 
       const operation = (pathItem as Record<string, unknown>)[method] as OaOperation | undefined;
       if (!operation) continue;

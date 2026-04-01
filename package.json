@@ -6,11 +6,11 @@
   },
   "lint-staged": {
     "packages/paso-js/src/**/*.ts": [
-      "eslint --fix --config packages/paso-js/eslint.config.mjs",
-      "prettier --write"
+      "./packages/paso-js/node_modules/.bin/eslint --fix --config packages/paso-js/eslint.config.mjs",
+      "./packages/paso-js/node_modules/.bin/prettier --write"
     ],
     "packages/paso-js/tests/**/*.ts": [
-      "prettier --write"
+      "./packages/paso-js/node_modules/.bin/prettier --write"
     ],
     "packages/paso-py/**/*.py": [
       "python3 -m py_compile"

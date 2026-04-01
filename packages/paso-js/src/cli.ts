@@ -7,6 +7,7 @@ import { registerInspect } from './commands/inspect';
 import { registerTest } from './commands/test';
 import { registerServe } from './commands/serve';
 import { registerDoctor } from './commands/doctor';
+import { registerConnect, registerDisconnect } from './commands/connect';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { version } = require('../package.json');
@@ -20,6 +21,8 @@ registerInspect(program);
 registerTest(program);
 registerServe(program);
 registerDoctor(program);
+registerConnect(program);
+registerDisconnect(program);
 
 program
   .command('version')
@@ -40,6 +43,8 @@ program
       'test',
       'serve',
       'doctor',
+      'connect',
+      'disconnect',
       'version',
       'completion',
     ];

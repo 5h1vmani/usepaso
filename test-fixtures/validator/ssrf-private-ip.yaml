@@ -1,0 +1,21 @@
+description: "base_url pointing to AWS metadata endpoint triggers private address warning"
+
+declaration:
+  version: "1.0"
+  service:
+    name: TestAPI
+    description: Test API
+    base_url: http://169.254.169.254
+  capabilities:
+    - name: get_data
+      description: Get data
+      method: GET
+      path: /data
+      permission: read
+
+expected_warnings:
+  - path: service.base_url
+    message_contains: "private/internal address"
+  - path: service.base_url
+    message_contains: "http://"
+expected_errors: []

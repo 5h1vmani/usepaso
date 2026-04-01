@@ -1,6 +1,7 @@
 export { parseFile, parseString } from './parser';
 export { validate } from './validator';
 export { generateMcpServer } from './generators/mcp';
+export type { McpServerResult, ServeOptions } from './generators/mcp';
 export { generateFromOpenApi } from './openapi';
 export { buildRequest, executeRequest, formatError, formatStructuredError } from './executor';
 export type { OpenApiResult } from './openapi';

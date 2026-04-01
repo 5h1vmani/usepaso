@@ -101,17 +101,34 @@ If `permissions` is omitted, each capability's `permission` field is used direct
 
 ## Validation Rules
 
+These produce errors. A declaration with any error is invalid.
+
 1. `version` must be `"1.0"`
-2. `service.name` must be non-empty
-3. `service.base_url` must be a valid URL
-4. Each capability `name` must be unique
-5. Each capability `name` must be snake_case (lowercase, underscores only)
-6. `method` must be a valid HTTP method
-7. `path` must start with `/`
-8. Parameters referenced in `path` (e.g., `{project_id}`) must exist in `inputs` with `in: path`
-9. `enum` type inputs must have `values` defined
-10. If `permissions` is defined, every capability name in `read`, `write`, or `admin` tiers must exist in `capabilities`. The `forbidden` tier may reference capability names not declared, to explicitly block API endpoints.
-11. A capability cannot appear in both a permission tier and `forbidden`
+2. `service.name` must be non-empty, max 100 characters
+3. `service.description` must be non-empty, max 500 characters
+4. `service.base_url` must be a valid URL, max 2000 characters
+5. Each capability `name` must be unique
+6. Each capability `name` must be snake_case (lowercase, underscores only), max 100 characters
+7. Each capability `description` must be non-empty, max 500 characters
+8. `method` must be a valid HTTP method
+9. `path` must start with `/`
+10. Parameters referenced in `path` (e.g., `{project_id}`) must exist in `inputs` with `in: path`
+11. `enum` type inputs must have `values` defined
+12. If `permissions` is defined, every capability name in `read`, `write`, or `admin` tiers must exist in `capabilities`. The `forbidden` tier may reference capability names not declared, to explicitly block API endpoints.
+13. A capability cannot appear in both a permission tier and `forbidden`
+
+## Validation Warnings
+
+These do not make a declaration invalid but are reported by `usepaso validate` and `usepaso validate --strict`.
+
+Always reported (with `usepaso validate`):
+- `service.base_url` uses `http://` instead of `https://`. Auth tokens sent over plain HTTP are exposed in transit.
+- `service.base_url` points to a private or internal IP address (e.g., `169.254.x.x`, `10.x.x.x`, `192.168.x.x`). Declarations are sometimes shared; a private address can be a security risk if the file is distributed.
+
+Reported only with `--strict`:
+- A `DELETE` capability has no `consent_required: true`. Agents could delete data without user confirmation.
+- A `write` or `admin` capability has no `constraints`. Consider adding rate limits or guardrails.
+- No `permissions` section defined. All capabilities are accessible by default.
 
 ## Example
 

@@ -1,6 +1,6 @@
 """Tests for the OpenAPI-to-usepaso converter — mirrors paso-js/tests/openapi.test.ts."""
 
-from usepaso.openapi import generate_from_openapi, MAX_CAPABILITIES
+from usepaso.openapi import generate_from_openapi, DEFAULT_MAX_CAPABILITIES
 from usepaso.parser import parse_string
 from usepaso.validator import validate
 
@@ -318,7 +318,7 @@ class TestNameDeduplication:
 class TestMaxCapabilitiesCap:
     def test_caps_at_max_capabilities(self):
         paths = {}
-        for i in range(MAX_CAPABILITIES + 5):
+        for i in range(DEFAULT_MAX_CAPABILITIES + 5):
             paths[f"/endpoint_{i}"] = {
                 "get": {
                     "operationId": f"op_{i}",
@@ -328,8 +328,8 @@ class TestMaxCapabilitiesCap:
             }
         spec = _minimal_spec(paths=paths)
         result = generate_from_openapi(spec)
-        assert result["generated_count"] == MAX_CAPABILITIES
-        assert result["total_operations"] == MAX_CAPABILITIES + 5
+        assert result["generated_count"] == DEFAULT_MAX_CAPABILITIES
+        assert result["total_operations"] == DEFAULT_MAX_CAPABILITIES + 5
         _assert_valid_yaml(result["yaml"])
 
 

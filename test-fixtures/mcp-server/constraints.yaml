@@ -1,0 +1,55 @@
+description: >
+  Declaration with constraint-enforced capabilities for testing runtime guards.
+  Both SDKs must enforce these at the MCP handler level, not just describe them.
+
+declaration:
+  version: "1.0"
+  service:
+    name: ConstraintTest
+    description: Test API for constraint enforcement
+    base_url: https://jsonplaceholder.typicode.com
+    auth:
+      type: none
+  capabilities:
+    - name: rate_limited_action
+      description: An action limited to 2 calls per hour
+      method: POST
+      path: /posts
+      permission: write
+      constraints:
+        - max_per_hour: 2
+
+    - name: value_capped_action
+      description: An action where numeric inputs cannot exceed 1000
+      method: POST
+      path: /transfers
+      permission: write
+      inputs:
+        amount:
+          type: number
+          required: true
+          description: Transfer amount
+          in: body
+      constraints:
+        - max_value: 1000
+
+    - name: batch_limited_action
+      description: An action where array inputs cannot exceed 10 items
+      method: POST
+      path: /batch
+      permission: write
+      inputs:
+        ids:
+          type: array
+          required: true
+          description: List of IDs to process
+          in: body
+      constraints:
+        - max_per_request: 10
+
+# Expected runtime behavior (both SDKs):
+#   rate_limited_action: first 2 calls succeed, 3rd returns rate limit error
+#   value_capped_action(amount=500): succeeds
+#   value_capped_action(amount=1500): returns max_value constraint error
+#   batch_limited_action(ids=[1..5]): succeeds
+#   batch_limited_action(ids=[1..15]): returns max_per_request constraint error

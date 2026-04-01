@@ -50,48 +50,42 @@ function minimal(): PasoDeclaration {
 
 describe('generateMcpServer', () => {
   it('creates an MCP server from a minimal declaration', () => {
-    const server = generateMcpServer(minimal());
-    expect(server).toBeDefined();
-    expect(server.server).toBeDefined();
+    const result = generateMcpServer(minimal());
+    expect(result).toBeDefined();
+    expect(result.server).toBeDefined();
+    expect(result.toolNames).toBeDefined();
   });
 
   it('registers tools for each capability', () => {
-    const server = generateMcpServer(minimal());
-    // The server should have registered 2 tools
-    // We can check via the internal state
-    expect((server as any)._registeredTools).toBeDefined();
-    expect(Object.keys((server as any)._registeredTools)).toHaveLength(2);
-    expect((server as any)._registeredTools['get_item']).toBeDefined();
-    expect((server as any)._registeredTools['create_item']).toBeDefined();
+    const { toolNames } = generateMcpServer(minimal());
+    expect(toolNames).toHaveLength(2);
+    expect(toolNames).toContain('get_item');
+    expect(toolNames).toContain('create_item');
   });
 
   it('skips forbidden capabilities', () => {
     const decl = minimal();
     decl.permissions = { forbidden: ['create_item'] };
-    const server = generateMcpServer(decl);
-    const tools = Object.keys((server as any)._registeredTools);
-    expect(tools).toHaveLength(1);
-    expect(tools).toContain('get_item');
-    expect(tools).not.toContain('create_item');
+    const { toolNames } = generateMcpServer(decl);
+    expect(toolNames).toHaveLength(1);
+    expect(toolNames).toContain('get_item');
+    expect(toolNames).not.toContain('create_item');
   });
 
   it('works with Sentry example', () => {
     const decl = parseFile(join(__dirname, '../../../examples/sentry/usepaso.yaml'));
-    const server = generateMcpServer(decl);
-    const tools = Object.keys((server as any)._registeredTools);
-    expect(tools.length).toBeGreaterThan(0);
-    expect(tools).toContain('list_issues');
-    expect(tools).toContain('resolve_issue');
+    const { toolNames } = generateMcpServer(decl);
+    expect(toolNames.length).toBeGreaterThan(0);
+    expect(toolNames).toContain('list_issues');
+    expect(toolNames).toContain('resolve_issue');
   });
 
   it('works with Stripe example (respects forbidden)', () => {
     const decl = parseFile(join(__dirname, '../../../examples/stripe/usepaso.yaml'));
-    const server = generateMcpServer(decl);
-    const tools = Object.keys((server as any)._registeredTools);
-    expect(tools).toContain('list_customers');
-    expect(tools).toContain('create_payment_intent');
-    // delete_customer is in forbidden but not declared as a capability, so it's just not present
-    expect(tools).not.toContain('delete_customer');
+    const { toolNames } = generateMcpServer(decl);
+    expect(toolNames).toContain('list_customers');
+    expect(toolNames).toContain('create_payment_intent');
+    expect(toolNames).not.toContain('delete_customer');
   });
 
   it('handles capabilities with no inputs', () => {
@@ -112,12 +106,12 @@ describe('generateMcpServer', () => {
         },
       ],
     };
-    const server = generateMcpServer(decl);
-    expect(Object.keys((server as any)._registeredTools)).toHaveLength(1);
+    const { toolNames } = generateMcpServer(decl);
+    expect(toolNames).toHaveLength(1);
   });
 
   it('includes consent warning in tool description', () => {
-    const server = generateMcpServer(minimal());
+    const { server } = generateMcpServer(minimal());
     const createTool = (server as any)._registeredTools['create_item'];
     expect(createTool).toBeDefined();
   });
@@ -139,9 +133,8 @@ describe('generateMcpServer', () => {
         },
       ],
     };
-    // Before fix, this threw: z.union requires at least 2 elements
-    const server = generateMcpServer(decl);
-    expect((server as any)._registeredTools['set_mode']).toBeDefined();
+    const { toolNames } = generateMcpServer(decl);
+    expect(toolNames).toContain('set_mode');
   });
 
   it('preserves numeric enum values in tool schema', () => {
@@ -161,10 +154,9 @@ describe('generateMcpServer', () => {
         },
       ],
     };
-    const server = generateMcpServer(decl);
+    const { server } = generateMcpServer(decl);
     const tool = (server as any)._registeredTools['set_level'];
     expect(tool).toBeDefined();
-    // The schema should accept numbers, not strings
     const schema = tool.inputSchema;
     expect(schema).toBeDefined();
   });
@@ -186,7 +178,7 @@ describe('generateMcpServer', () => {
         },
       ],
     };
-    const server = generateMcpServer(decl);
+    const { server } = generateMcpServer(decl);
     const tool = (server as any)._registeredTools['list_items'];
     expect(tool).toBeDefined();
   });
@@ -209,7 +201,7 @@ describe('generateMcpServer', () => {
   });
 
   it('includes permission tier and method in tool description', () => {
-    const server = generateMcpServer(minimal());
+    const { server } = generateMcpServer(minimal());
     const tool = (server as any)._registeredTools['create_item'];
     expect(tool).toBeDefined();
     expect(tool.description).toContain('[Permission: write]');
@@ -231,7 +223,7 @@ describe('generateMcpServer', () => {
         },
       ],
     };
-    const server = generateMcpServer(decl);
+    const { server } = generateMcpServer(decl);
     const tool = (server as any)._registeredTools['transfer'];
     expect(tool.description).toContain('Required: account_id must be provided');
   });
@@ -257,7 +249,7 @@ describe('shared tool-description fixtures (cross-SDK parity)', () => {
         capabilities: [cap],
       };
 
-      const server = generateMcpServer(decl);
+      const { server } = generateMcpServer(decl);
       const tool = (server as any)._registeredTools[cap.name];
       expect(tool).toBeDefined();
 
