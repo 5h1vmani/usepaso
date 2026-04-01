@@ -1,9 +1,10 @@
 import os
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 
-def load_env_file(yaml_path: str, env_file_path: str = None) -> bool:
+def load_env_file(yaml_path: str, env_file_path: Optional[str] = None) -> bool:
     """Load variables from a .env file into os.environ.
 
     If env_file_path is provided, loads from that path.

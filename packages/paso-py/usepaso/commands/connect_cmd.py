@@ -71,7 +71,7 @@ def _build_entry(yaml_path: str, has_token: bool, use_absolute_path: bool) -> di
         args = ['serve', '-f', str(Path(yaml_path).resolve())]
     else:
         args = ['serve']
-    entry = {'command': 'usepaso', 'args': args}
+    entry: dict = {'command': 'usepaso', 'args': args}
     if not has_token:
         entry['env'] = {'USEPASO_AUTH_TOKEN': 'your-token'}
     return entry
