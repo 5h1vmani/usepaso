@@ -13,7 +13,8 @@
       "./packages/paso-js/node_modules/.bin/prettier --write"
     ],
     "packages/paso-py/**/*.py": [
-      "python3 -m py_compile"
+      "python3 -m py_compile",
+      "bash -c 'cd packages/paso-py && python3 -m mypy usepaso/ --ignore-missing-imports'"
     ]
   },
   "devDependencies": {
